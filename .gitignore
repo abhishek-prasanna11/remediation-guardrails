@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Experiment output — raw episode logs are regenerable and large.
+# Derived tables/plots under results/derived/ ARE tracked.
+results/raw/
+*.jsonl
+
+# Secrets — never commit API keys
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
