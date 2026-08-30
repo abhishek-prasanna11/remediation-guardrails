@@ -393,12 +393,21 @@ Defined precisely up front so the analysis code is mechanical.
 | A0 | Random valid action | floor |
 | A1 | Static rule-based runbook | non-LLM baseline — **essential** |
 | A2 | LLM, no gate | the thing everyone actually ships |
+| A2b | LLM, no gate, **quit-prompted** | prompt-level self-policing baseline |
 | A3 | LLM + gate (block only) | the intervention |
 | A4 | LLM + gate + feedback & retry | does feedback help? |
 | A5* | Gate check ablations (C1..C6 each disabled) | which check carries the weight |
 
 A0 and A1 are not optional. Without them you cannot claim the LLM contributes anything at
 all, and that is the first question a reviewer asks.
+
+**A2b is not optional either** — see `01-literature-survey.md` #11. Prompt-level
+self-policing ("you may quit if unsure") is reported to buy a large safety gain at
+negligible utility cost, and it is nearly free to implement. If we don't measure it, the
+obvious reviewer question is why an external gate is worth the engineering when a prompt
+gets much of the way there. Our expected answer — a prompt-level defence is model-mediated
+and so fails exactly when the model is wrong, jailbroken, or injected, whereas the gate
+holds — is only credible if we show the numbers, especially on fault family F.
 
 **Factors** — model (2–3, ideally one weak + one strong), scenario family, seed.
 
@@ -418,8 +427,9 @@ strong model for a confirmatory subset. Budget tokens before you start, not afte
 remediation-guardrails/
 ├── docs/
 │   ├── 00-problem-and-plan.md      ← this file
-│   ├── 01-fault-catalogue.md       ← pre-registered scenarios (frozen before runs)
-│   └── 02-threats-to-validity.md
+│   ├── 01-literature-survey.md
+│   ├── 02-fault-catalogue.md       ← pre-registered scenarios (frozen before runs)
+│   └── 03-threats-to-validity.md
 ├── src/rg/
 │   ├── sim/          cluster state, tick dynamics, invariants
 │   ├── observe/      alerts, log templating, context builder
