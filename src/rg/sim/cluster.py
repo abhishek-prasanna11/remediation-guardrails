@@ -44,8 +44,8 @@ SOFT = {
     "pool_util": 85.0,
 }
 
-QUEUE_INFLOW = 100.0  # messages per tick
-WORKER_RATE = 60.0  # messages per worker replica per tick
+QUEUE_INFLOW = 150.0  # messages per tick
+WORKER_RATE = 90.0  # messages per worker replica per tick
 
 
 @dataclass
