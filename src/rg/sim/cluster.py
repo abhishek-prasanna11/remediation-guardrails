@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import random
 from dataclasses import dataclass, field
 
@@ -422,8 +421,8 @@ class Cluster:
         s = self.services.get(f.service or "")
         if s is None:
             return False
-        if f.kind == "traffic_surge":
-            return s.replicas >= math.ceil(s.cfg.replicas * f.rate * 0.6)
+        if f.kind == "traffic_surge":  # mitigated once per-replica load is back to normal
+            return s.cfg.base_cpu * f.rate * s.cfg.replicas / max(s.replicas, 1) < SOFT["cpu_pct"]
         if f.kind == "consumer_slowdown":
             return WORKER_RATE * s.replicas * f.rate >= QUEUE_INFLOW * 1.2
         return False
