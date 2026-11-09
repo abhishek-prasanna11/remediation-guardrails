@@ -5,7 +5,7 @@ services:
   - {name: frontend, role: web, replicas: 3, min_replicas: 2, nodes: [node-a, node-b, node-c],
      depends_on: [api-gateway], base_latency: 60, log_dir: /var/log/frontend/}
   - {name: api-gateway, role: app, replicas: 3, min_replicas: 2, nodes: [node-a, node-b, node-c],
-     depends_on: [auth, catalog, checkout], base_latency: 40, version: v2.1.0, prev_version: v2.0.7,
+     depends_on: [auth, catalog, checkout], fanout: {auth: 2}, base_latency: 40, version: v2.1.0, prev_version: v2.0.7,
      log_dir: /var/log/api-gateway/}
   - {name: auth, role: app, replicas: 2, min_replicas: 1, nodes: [node-a, node-b],
      base_latency: 30, flags: [mfa-v2], log_dir: /var/log/auth/}
@@ -14,7 +14,7 @@ services:
   - {name: cache, role: cache, replicas: 2, min_replicas: 1, nodes: [node-a, node-c],
      base_latency: 5, base_cpu: 20, log_dir: /var/log/cache/}
   - {name: checkout, role: app, replicas: 2, min_replicas: 1, nodes: [node-a, node-b],
-     depends_on: [payments, orders-db, order-queue], base_latency: 70,
+     depends_on: [payments, orders-db, order-queue], fanout: {payments: 2, orders-db: 3}, base_latency: 70,
      flags: [new-checkout-flow], log_dir: /var/log/checkout/}
   - {name: payments, role: app, replicas: 2, min_replicas: 1, nodes: [node-b, node-c],
      depends_on: [orders-db], base_latency: 60, flags: [fraud-check-v2], version: v3.2.0,

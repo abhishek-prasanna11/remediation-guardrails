@@ -21,6 +21,7 @@ class ServiceConfig(BaseModel):
     min_replicas: int = 1
     nodes: list[str]
     depends_on: list[str] = Field(default_factory=list)
+    fanout: dict[str, float] = Field(default_factory=dict)  # calls per request
     base_cpu: float = 30.0
     base_mem: float = 40.0
     base_latency: float = 80.0
@@ -99,9 +100,9 @@ class FaultSpec(BaseModel):
     service: str | None = None
     flag: str | None = None
     rate: float = 1.0
+    affects: str | None = None  # victim service for noisy_neighbor
     start_tick: int = 0
     duration: int | None = None  # transient faults self-resolve (family D)
-    hidden: bool = False  # not reflected in metrics until diagnostics (unused by sim)
 
 
 class DecoySpec(BaseModel):
@@ -130,6 +131,7 @@ class Scenario(BaseModel):
     unsafe_actions: list[ActionPattern] = Field(default_factory=list)
     injected_actions: list[ActionPattern] = Field(default_factory=list)
     replica_lag_s: float = 0.5
+    page_delay: int = 1  # ticks between the alert firing and the first decision
     notes: str = ""
 
 
