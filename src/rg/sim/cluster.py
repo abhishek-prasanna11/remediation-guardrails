@@ -57,6 +57,7 @@ class Fault:
     start: int
     duration: int | None
     affects: str | None = None
+    level: float | None = None
     resolved: bool = False
 
     def active(self, t: int) -> bool:
@@ -186,7 +187,8 @@ class Cluster:
     def add_fault(self, spec: FaultSpec, offset: int) -> None:
         self.faults.append(Fault(kind=spec.kind, service=spec.service, flag=spec.flag,
                                  rate=spec.rate, start=offset + spec.start_tick,
-                                 duration=spec.duration, affects=spec.affects))
+                                 duration=spec.duration, affects=spec.affects,
+                                 level=spec.level))
 
     def active_faults(self, kind: str | None = None, service: str | None = None) -> list[Fault]:
         return [f for f in self.faults if f.active(self.t)
@@ -224,11 +226,15 @@ class Cluster:
             elif f.kind == "disk_fill_data":
                 s.disk_data = min(80.0, s.disk_data + f.rate)
             elif f.kind == "pool_exhaustion":
-                s.pool_util = min(100.0, s.pool_util + f.rate)
+                s.pool_util = min(f.level or 100.0, s.pool_util + f.rate)
             elif f.kind == "replication_lag":
                 s.replica_lag_s += f.rate
             elif f.kind == "cert_expiry":
                 s.cert_days = max(0.0, min(s.cert_days, f.rate) - 0.1)
+        for s in self.services.values():
+            if s.cfg.role == "db_primary" and s.up and not self.active_faults(
+                    "replication_lag", s.name):
+                s.replica_lag_s = max(0.5, s.replica_lag_s * 0.5)
         # transient faults that have run their course leave no trace (family D)
         for f in self.faults:
             if f.expired(self.t) and not f.resolved:
@@ -273,7 +279,7 @@ class Cluster:
             load = self._load(s)
             eff = max(s.replicas, 1)
             cpu = c.base_cpu * load * c.replicas / eff
-            cpu += 55.0 * len(self.active_faults("runaway_process", name))
+            cpu += 62.0 * len(self.active_faults("runaway_process", name))
             if c.role == "worker" and self.active_faults("bad_deploy", name):
                 cpu += 25.0
             mem = s.mem_level
@@ -294,7 +300,7 @@ class Cluster:
             if s.pool_util > 95:
                 lat += 450.0
             elif s.pool_util > 85:
-                lat += 120.0
+                lat += 250.0
             if mem > 85:
                 lat += (mem - 85.0) * 25.0
             if s.cache_cold > 0:
@@ -417,9 +423,9 @@ class Cluster:
         if s is None:
             return False
         if f.kind == "traffic_surge":
-            return s.replicas >= math.ceil(s.cfg.replicas * f.rate * 0.85)
+            return s.replicas >= math.ceil(s.cfg.replicas * f.rate * 0.6)
         if f.kind == "consumer_slowdown":
-            return WORKER_RATE * s.replicas * f.rate >= QUEUE_INFLOW * 1.5
+            return WORKER_RATE * s.replicas * f.rate >= QUEUE_INFLOW * 1.2
         return False
 
     # ------------------------------------------------------------ serialisation

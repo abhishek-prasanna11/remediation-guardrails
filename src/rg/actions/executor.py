@@ -108,8 +108,9 @@ def _apply(c: Cluster, p: Proposal) -> ExecResult:
         svc.version, svc.prev_version = svc.cfg.prev_version, svc.version
         c.resolve("bad_deploy", tgt)
         for f in c.faults:
-            if f.kind == "noisy_neighbor" and f.service == tgt:
+            if f.kind == "noisy_neighbor" and f.service == tgt and not f.resolved:
                 f.resolved = True
+                c.resolve("replication_lag", f.affects)
         return ExecResult(True, f"{tgt} rolled back to {svc.version}")
 
     if a == "clear_cache":

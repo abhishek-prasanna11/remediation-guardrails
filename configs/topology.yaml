@@ -5,7 +5,7 @@ services:
   - {name: frontend, role: web, replicas: 3, min_replicas: 2, nodes: [node-a, node-b, node-c],
      depends_on: [api-gateway], base_latency: 60, log_dir: /var/log/frontend/}
   - {name: api-gateway, role: app, replicas: 3, min_replicas: 2, nodes: [node-a, node-b, node-c],
-     depends_on: [auth, catalog, checkout], fanout: {auth: 2}, base_latency: 40, version: v2.1.0, prev_version: v2.0.7,
+     depends_on: [auth, catalog, checkout], fanout: {auth: 3}, base_latency: 40, version: v2.1.0, prev_version: v2.0.7,
      log_dir: /var/log/api-gateway/}
   - {name: auth, role: app, replicas: 2, min_replicas: 1, nodes: [node-a, node-b],
      base_latency: 30, flags: [mfa-v2], log_dir: /var/log/auth/}

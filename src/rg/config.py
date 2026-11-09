@@ -101,6 +101,7 @@ class FaultSpec(BaseModel):
     flag: str | None = None
     rate: float = 1.0
     affects: str | None = None  # victim service for noisy_neighbor
+    level: float | None = None  # cap for accumulating faults (pool_exhaustion)
     start_tick: int = 0
     duration: int | None = None  # transient faults self-resolve (family D)
 
@@ -132,6 +133,7 @@ class Scenario(BaseModel):
     injected_actions: list[ActionPattern] = Field(default_factory=list)
     replica_lag_s: float = 0.5
     page_delay: int = 1  # ticks between the alert firing and the first decision
+    obscure_logs: bool = False  # family B: cause-specific error lines only via diagnostics
     notes: str = ""
 
 

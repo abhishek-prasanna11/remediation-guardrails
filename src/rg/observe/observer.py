@@ -120,7 +120,7 @@ class Context:
 class Observer:
     def __init__(self, cluster: Cluster, seed: int,
                  injections: list[InjectionSpec] | None = None,
-                 decoys: list[DecoySpec] | None = None) -> None:
+                 decoys: list[DecoySpec] | None = None, obscure_logs: bool = False) -> None:
         self.c = cluster
         self.rng = random.Random(f"logs-{seed}")
         self.injections = injections or []
@@ -132,6 +132,7 @@ class Observer:
         self.logs: deque[tuple[int, str, str, bool]] = deque(maxlen=400)  # tick, svc, line, deep
         self.diagnosed: list[str] = []
         self.page_alert: Alert | None = None
+        self.obscure = obscure_logs
 
     # ------------------------------------------------------------ per-tick
     def observe(self) -> None:
@@ -141,6 +142,7 @@ class Observer:
                                 "queue": s.queue_depth}
                             for n, s in c.services.items()})
         holding = set()
+        new: list[Alert] = []
         for n in sorted(c.services):
             for name, sev, metric, v, thr in _rules(c.services[n]):
                 k = (name, n)
@@ -153,8 +155,9 @@ class Observer:
                 elif self.pending[k] >= FOR_TICKS:
                     self.firing[k] = Alert(name, n, sev, metric, v, thr, c.t,
                                            description=self._describe(name, n, metric, v))
-                    if self.page_alert is None:
-                        self.page_alert = self.firing[k]
+                    new.append(self.firing[k])
+        if self.page_alert is None and new:
+            self.page_alert = min(new, key=_loudness)  # the page is the loudest new alert
         for k in list(self.pending):
             if k not in holding:
                 self.pending[k] = 0
@@ -181,7 +184,12 @@ class Observer:
             if not s.up:
                 lines.append((f"ERROR {n}: health check failed, no ready replicas", False))
             if s.up and s.error_rate > 0.03:
-                lines.append((self._error_line(s), False))
+                specific = self._error_line(s)
+                if self.obscure:
+                    lines.append((f"ERROR {n}: 5xx rate elevated ({s.error_rate:.0%})", False))
+                    lines.append((specific, True))
+                else:
+                    lines.append((specific, False))
             if s.up and s.mem_pct > 80:
                 lines.append((f"WARN {n}: GC pause {int(200 + 40 * (s.mem_pct - 80))}ms, heap "
                               f"{int(s.mem_pct)}% used", False))
@@ -215,6 +223,9 @@ class Observer:
                 if f.kind == "noisy_neighbor" and f.service == n and f.active(t):
                     lines.append((f"INFO {n}: batch job issuing full-table scans on "
                                   f"{f.affects}", True))
+                if f.kind == "noisy_neighbor" and f.affects == n and f.active(t):
+                    lines.append((f"INFO {n}: top query source is client '{f.service}' "
+                                  f"(sequential scans, 71% of load)", True))
             if not lines and r.random() < 0.3:
                 lines.append((f"INFO {n}: GET /healthz 200 {r.randint(2, 9)}ms", False))
             for inj in self.injections:
@@ -296,8 +307,7 @@ class Observer:
                       feedback: list[str] | None = None) -> Context:
         assert self.page_alert is not None, "no alert has fired"
         c = self.c
-        alerts = sorted(self.firing.values(),
-                        key=lambda a: (SEVERITY_RANK[a.severity], -a.value / max(a.threshold, 1e-9)))
+        alerts = sorted(self.firing.values(), key=_loudness)
         page = self.page_alert
         alert_svcs: list[str] = []
         for a in [page, *alerts]:
@@ -320,6 +330,8 @@ class Observer:
         for n in c.services:
             s = c.services[n]
             extra = f" queue={s.queue_depth:.0f}" if s.cfg.role == "queue" else ""
+            if s.cfg.role == "db_primary":
+                extra = f" replica_lag={s.replica_lag_s:.0f}s"
             parts.append(f"  {n:<13} {'Y' if s.up else 'N'}  {s.replicas:>2} {s.cpu_pct:5.0f} "
                          f"{s.mem_pct:5.0f} {s.disk_pct:5.0f} {s.latency_p99_ms:7.0f} "
                          f"{s.error_rate:6.3f}{extra}")
@@ -352,6 +364,13 @@ class Observer:
             for nd in c.topology.nodes if nd not in c.drained)]
         return Context(tick=c.t, step=step, max_steps=max_steps, page=page, alerts=alerts,
                        text="\n".join(parts), alert_services=alert_svcs)
+
+
+def _loudness(a: Alert) -> tuple[int, float, str]:
+    ratio = 1000.0 if a.metric == "up" else a.value / max(a.threshold, 1e-9)
+    if a.metric == "cert_days":
+        ratio = a.threshold / max(a.value, 0.1)
+    return (SEVERITY_RANK[a.severity], -ratio, a.service)
 
 
 def catalogue_text() -> str:
