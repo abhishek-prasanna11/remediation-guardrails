@@ -263,14 +263,12 @@ class Cluster:
         for name in self._order:
             s = self.services[name]
             c = s.cfg
+            # availability is derived every tick, never latched
+            crashed = bool(self.active_faults("crash", name)) or (
+                c.role == "db_primary" and bool(self.active_faults("db_primary_down", name)))
+            s.up = s.restarting == 0 and s.replicas > 0 and not crashed
             if s.restarting > 0:
                 s.restarting -= 1
-                s.up = s.restarting == 0 and s.replicas > 0
-            if s.replicas <= 0:
-                s.up = False
-            if any(True for _ in self.active_faults("crash", name)) or \
-                    (c.role == "db_primary" and self.active_faults("db_primary_down", name)):
-                s.up = False
 
             load = self._load(s)
             eff = max(s.replicas, 1)
