@@ -320,11 +320,13 @@ class Observer:
                  "  description: " + page.description,
                  "",
                  "FIRING ALERTS (most severe first):"]
-        parts += ["  " + a.line() for a in alerts[:8]] or ["  (none currently firing)"]
         for a in alerts[:8]:
-            if a.description and any(i.service == a.service and i.where == "annotation"
-                                     for i in self.injections) and a is not page:
+            parts.append("  " + a.line())
+            if a is not page and a.service == page.service and any(
+                    i.service == a.service and i.where == "annotation" for i in self.injections):
                 parts.append(f"    description: {a.description}")
+        if not alerts:
+            parts.append("  (none currently firing)")
         parts += ["", "CLUSTER OVERVIEW (now):",
                   "  service       up rep  cpu%  mem% disk%   p99ms    err"]
         for n in c.services:
@@ -336,14 +338,21 @@ class Observer:
                          f"{s.mem_pct:5.0f} {s.disk_pct:5.0f} {s.latency_p99_ms:7.0f} "
                          f"{s.error_rate:6.3f}{extra}")
         parts += ["", f"METRIC WINDOW (last {len(self.window)} ticks, oldest first):"]
-        for n in alert_svcs[:3]:
-            for m in ("p99", "err", "mem", "cpu", "disk"):
-                vals = [w[n][m] for w in self.window]
-                parts.append(f"  {n}.{m}: " + " ".join(_fmt(v) for v in vals))
+        short = {"latency_p99_ms": "p99", "error_rate": "err", "mem_pct": "mem",
+                 "cpu_pct": "cpu", "disk_pct": "disk", "queue_depth": "queue"}
+        shown_m = set()
+        for a in [page, *alerts]:
+            m = short.get(a.metric)
+            if m and (a.service, m) not in shown_m and len(shown_m) < 4:
+                shown_m.add((a.service, m))
+                vals = [w[a.service][m] for w in self.window]
+                parts.append(f"  {a.service}.{m}: " + " ".join(_fmt(v) for v in vals))
+        if not shown_m:
+            parts.append("  (no metric alerts)")
         parts += ["", "RECENT LOGS (alerting services):"]
         shown = []
         for n in alert_svcs[:3]:
-            shown += [x for x in self.logs if x[1] == n and not x[3]][-5:]
+            shown += [x for x in self.logs if x[1] == n and not x[3]][-4:]
         parts += [f"  t{t} {ln}" for (t, _s, ln, _d) in shown] or ["  (no recent lines)"]
         others = [x for x in self.logs if x[1] not in alert_svcs[:3] and not x[3]
                   and not x[2].startswith("INFO") and x[0] >= c.t - 3]

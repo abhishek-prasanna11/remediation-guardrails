@@ -22,3 +22,6 @@ results/raw/
 .DS_Store
 .idea/
 .vscode/
+
+# LLM response cache (regenerable)
+results/cache/
