@@ -38,20 +38,50 @@ escalates. Only approved proposals execute. Everything is logged; the logs are t
 
 | Phase | | |
 |---|---|---|
-| 0 | Repo skeleton, config, log schema, CI | not started |
-| 1 | Simulator core | not started |
-| 2 | Observer, alerts, context builder | not started |
-| 3 | Action catalogue + executor | not started |
-| 4 | Mock proposers | not started |
-| 5 | **Verification gate** | not started |
-| 6 | LLM proposer | not started |
-| 7 | Fault catalogue + full runner | not started |
-| 8 | Analysis + stats | not started |
-| 9 | Docker validation *(optional)* | not started |
+| 0 | Repo skeleton, config, log schema, CI | done |
+| 1 | Simulator core | done (determinism test in CI) |
+| 2 | Observer, alerts, context builder | done |
+| 3 | Action catalogue + executor | done (one test per action) |
+| 4 | Mock proposers | done (5 mocks reproduce their failure mode) |
+| 5 | **Verification gate** | done (C1–C6, shadow mode, validated on all mocks) |
+| 6 | LLM proposer | done (Ollama, schema-constrained JSON, seeded, cached) |
+| 7 | Fault catalogue + full runner | done (32 pre-registered scenarios; tag `freeze-v1`) |
+| 8 | Analysis + stats | done (`rg analyze` regenerates every number) |
+| 9 | Docker validation *(optional)* | not done |
 
-Phases 4–5 come before 6 deliberately: the gate is built and fully tested against scripted
-mock proposers at zero API cost, so that when a real model is plugged in, everything
-downstream is already trusted.
+Still open before submission: the independent rater's Cohen's κ (`rg irr`). Also the
+`TODO` bibliography entries in `paper/refs.bib`, the author list, and the target venue.
+
+## Reproduce
+
+```bash
+uv venv --python 3.12 && uv pip install -e ".[dev]"
+.venv/bin/pytest -q                                   # 247 tests
+.venv/bin/rg validate                                 # configs + catalogue hash
+.venv/bin/rg run --arm A0,A1,A1g --seeds 0-14         # non-LLM arms
+ollama pull llama3.2 && ollama pull qwen2.5:7b
+.venv/bin/rg run --arm A2,A3,A2b,A4 --model llama3.2-3b --seeds 0-2 --workers 2
+.venv/bin/rg analyze                                  # tables, figures, paper/numbers.tex
+cd paper && latexmk -pdf main.tex
+```
+
+## Layout
+
+| Path | What |
+|---|---|
+| `src/rg/sim/` | Seeded cluster simulator (ground truth) |
+| `src/rg/observe/` | Alerts, logs, metric windows, diagnostics, the proposer's context |
+| `src/rg/actions/` | Typed action catalogue and effect model |
+| `src/rg/propose/` | Random, runbook, five mocks, LLM proposer |
+| `src/rg/gate/` | The verification gate C1–C6 |
+| `src/rg/faults/` | Episode setup and the pre-registered labeller |
+| `src/rg/harness/` | Episode loop and resumable runner |
+| `src/rg/analysis/` | Metrics, cluster bootstrap, McNemar, tables, figures, inter-rater tool |
+| `configs/` | Topology, gate policy, arms, models, **scenarios.yaml (frozen)** |
+| `docs/` | Plan, literature survey, phase plan, fault catalogue, threats, log schema |
+| `results/raw/` | Episode JSONL (git-ignored, regenerable) |
+| `results/derived/` | Summary tables (tracked) |
+| `paper/` | IEEE conference paper; tables/figures/numbers are generated |
 
 ## Team
 

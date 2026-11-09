@@ -25,3 +25,13 @@ results/raw/
 
 # LLM response cache (regenerable)
 results/cache/
+
+# LaTeX build files
+paper/*.aux
+paper/*.log
+paper/*.bbl
+paper/*.blg
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.out
+paper/*.synctex.gz
