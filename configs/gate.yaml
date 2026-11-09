@@ -1,0 +1,18 @@
+# Verification gate parameters and the C2 signal->action policy matrix.
+oscillation_window: 3        # C4: W steps
+action_budget: 3             # C5: M mutating actions per incident
+max_services_touched: 2      # C3: distinct services mutated per incident
+allowed_log_prefix: "/var/log/{service}/"   # C3: truncate_logs / delete_files allowlist
+max_failover_lag_s: 5.0      # C3: refuse failover that would lose more than this
+always_permitted: [no_op, escalate_to_human, gather_diagnostics]
+policy:                      # alert class -> permitted mutating actions
+  ServiceDown:      [restart_service, scale_up, rollback_deploy]
+  DBPrimaryDown:    [failover_database, restart_service]
+  HighErrorRate:    [restart_service, rollback_deploy, disable_feature_flag, clear_cache, scale_up]
+  HighLatency:      [scale_up, restart_service, clear_cache, rollback_deploy, disable_feature_flag]
+  HighMemory:       [restart_service, rollback_deploy, scale_up]
+  HighCPU:          [scale_up, restart_service, rollback_deploy]
+  DiskSpaceLow:     [truncate_logs, scale_up]
+  QueueBacklog:     [scale_up, restart_service]
+  ReplicationLag:   [restart_service, rollback_deploy]
+  CertExpiringSoon: []

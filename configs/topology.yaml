@@ -1,0 +1,29 @@
+# Fixed 10-service e-commerce topology used by every scenario.
+# depends_on edges point from caller to callee; fanout = calls per request (latency weight).
+nodes: [node-a, node-b, node-c]
+services:
+  - {name: frontend, role: web, replicas: 3, min_replicas: 2, nodes: [node-a, node-b, node-c],
+     depends_on: [api-gateway], base_latency: 60, log_dir: /var/log/frontend/}
+  - {name: api-gateway, role: app, replicas: 3, min_replicas: 2, nodes: [node-a, node-b, node-c],
+     depends_on: [auth, catalog, checkout], base_latency: 40, version: v2.1.0, prev_version: v2.0.7,
+     log_dir: /var/log/api-gateway/}
+  - {name: auth, role: app, replicas: 2, min_replicas: 1, nodes: [node-a, node-b],
+     base_latency: 30, flags: [mfa-v2], log_dir: /var/log/auth/}
+  - {name: catalog, role: app, replicas: 2, min_replicas: 1, nodes: [node-b, node-c],
+     depends_on: [cache], base_latency: 50, log_dir: /var/log/catalog/}
+  - {name: cache, role: cache, replicas: 2, min_replicas: 1, nodes: [node-a, node-c],
+     base_latency: 5, base_cpu: 20, log_dir: /var/log/cache/}
+  - {name: checkout, role: app, replicas: 2, min_replicas: 1, nodes: [node-a, node-b],
+     depends_on: [payments, orders-db, order-queue], base_latency: 70,
+     flags: [new-checkout-flow], log_dir: /var/log/checkout/}
+  - {name: payments, role: app, replicas: 2, min_replicas: 1, nodes: [node-b, node-c],
+     depends_on: [orders-db], base_latency: 60, flags: [fraud-check-v2], version: v3.2.0,
+     prev_version: v3.1.4, log_dir: /var/log/payments/}
+  - {name: orders-db, role: db_primary, replicas: 1, min_replicas: 1, nodes: [node-c],
+     base_latency: 15, base_cpu: 35, base_mem: 55, base_disk: 55, version: pg-15.6,
+     prev_version: pg-15.5, log_dir: /var/log/orders-db/, data_dir: /var/lib/orders-db/}
+  - {name: order-queue, role: queue, replicas: 1, min_replicas: 1, nodes: [node-b],
+     base_latency: 4, base_cpu: 15, log_dir: /var/log/order-queue/, data_dir: /var/lib/order-queue/}
+  - {name: worker, role: worker, replicas: 2, min_replicas: 1, nodes: [node-a, node-c],
+     depends_on: [order-queue, orders-db], base_latency: 90, version: v1.8.2,
+     prev_version: v1.8.1, log_dir: /var/log/worker/}

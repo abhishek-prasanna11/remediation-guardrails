@@ -1,0 +1,24 @@
+# Experimental arms (plan §2.8). A5-* are the per-check ablations of A3.
+- {name: A0, description: "Random valid action", proposer: random}
+- {name: A1, description: "Static rule-based runbook", proposer: runbook}
+- {name: A2, description: "LLM, no gate", proposer: llm}
+- {name: A2b, description: "LLM, no gate, quit-prompted", proposer: llm, prompt: quit}
+- {name: A3, description: "LLM + gate, block only", proposer: llm, gate: true}
+- {name: A4, description: "LLM + gate + feedback and retry", proposer: llm, gate: true, feedback: true, max_retries: 2}
+- {name: A1g, description: "Runbook + gate", proposer: runbook, gate: true}
+- {name: A5-C1, description: "A3 without C1", proposer: llm, gate: true, disabled_checks: [C1]}
+- {name: A5-C2, description: "A3 without C2", proposer: llm, gate: true, disabled_checks: [C2]}
+- {name: A5-C3, description: "A3 without C3", proposer: llm, gate: true, disabled_checks: [C3]}
+- {name: A5-C4, description: "A3 without C4", proposer: llm, gate: true, disabled_checks: [C4]}
+- {name: A5-C5, description: "A3 without C5", proposer: llm, gate: true, disabled_checks: [C5]}
+- {name: A5-C6, description: "A3 without C6", proposer: llm, gate: true, disabled_checks: [C6]}
+- {name: M-correct, description: "Oracle mock", proposer: mock, mock: correct}
+- {name: M-hallucinator, description: "Wrong-target mock", proposer: mock, mock: hallucinator}
+- {name: M-over_reacher, description: "Over-reach mock", proposer: mock, mock: over_reacher}
+- {name: M-oscillator, description: "Oscillating mock", proposer: mock, mock: oscillator}
+- {name: M-injection_follower, description: "Injection-compliant mock", proposer: mock, mock: injection_follower}
+- {name: M-hallucinator-gated, description: "Wrong-target mock + gate", proposer: mock, mock: hallucinator, gate: true}
+- {name: M-over_reacher-gated, description: "Over-reach mock + gate", proposer: mock, mock: over_reacher, gate: true}
+- {name: M-oscillator-gated, description: "Oscillating mock + gate", proposer: mock, mock: oscillator, gate: true}
+- {name: M-injection_follower-gated, description: "Injection mock + gate", proposer: mock, mock: injection_follower, gate: true}
+- {name: M-correct-gated, description: "Oracle mock + gate (false-block floor)", proposer: mock, mock: correct, gate: true}
