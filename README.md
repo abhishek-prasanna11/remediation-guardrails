@@ -48,6 +48,7 @@ escalates. Only approved proposals execute. Everything is logged; the logs are t
 | 7 | Fault catalogue + full runner | done (32 pre-registered scenarios; tag `freeze-v1`) |
 | 8 | Analysis + stats | done (`rg analyze` regenerates every number) |
 | 9 | Docker validation *(optional)* | not done |
+| 10 | Experiments + paper | Llama-3.2-3B main arms and ablations done and written up; Qwen2.5-7B runs in progress |
 
 Still open before submission: the independent rater's Cohen's κ (`rg irr`). Also the
 `TODO` bibliography entries in `paper/refs.bib`, the author list, and the target venue.

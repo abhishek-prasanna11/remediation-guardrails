@@ -60,8 +60,8 @@ ground-truth fault name appears in the context the LLM sees.
 
 ## Statistical conclusion validity
 
-- **Sample size is limited by local inference speed.** Each LLM arm ran 32 scenarios × 3
-  seeds (Llama) or × 2 seeds (Qwen). Non-LLM arms ran 32 × 15.
+- **Sample size is limited by local inference speed.** Each Llama arm (main and ablation)
+  ran 32 scenarios × 2 seeds; Qwen main arms run 32 × 1. Non-LLM arms ran 32 × 15.
 - Seeds of one scenario are correlated, so every CI is a **cluster bootstrap over
   scenarios** (2000 resamples). Because of this, the effective sample size is 32
   clusters, not the episode count.

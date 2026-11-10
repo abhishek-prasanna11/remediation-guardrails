@@ -30,7 +30,27 @@ International Institute of Information Technology Bangalore, India}}
 
 %======================================================================
 \begin{abstract}
-%RESULTS-ABSTRACT
+Large language models can now be wired into incident response loops that not only
+diagnose a production fault but execute the fix. A mistaken action in such a loop
+restarts the wrong service, fails over onto a stale replica or deletes data, and the
+model's context---logs and alert text---is writable by anyone who can emit a log
+line. We measure the safety--utility tradeoff of the pattern ``the LLM proposes, a
+verified gate disposes'': a six-check deterministic gate (target implication, policy,
+blast radius and invariants, oscillation, action budget, evidence freshness) that
+vets every typed proposal against ground-truth state before execution. We build a
+deterministic, seeded remediation testbed with a 32-scenario fault catalogue whose
+correct and unsafe actions were committed before any gate code or model run, and
+compare random, runbook and LLM proposers with and without the gate, a prompt-only
+``quit if unsure'' defence, gate feedback, and per-check ablations, with paired
+cluster-bootstrap statistics. Without the gate Llama-3.2-3B takes an unsafe action in
+\UnsafeEpAtwoLlama{}\% of incidents and an irreversible one in \CatEpAtwoLlama{}\%;
+the defensive prompt leaves those rates statistically unchanged and the model follows
+injected instructions in \InjPropAtwobLlama{}\% of injection incidents despite it.
+Behind the gate no unsafe action executes ($-$\UnsafeEpAtwoLlama{} pp, McNemar
+\DiffUnsafeAtwoAthreeLlamaP{}) at no measured cost in resolution and with no correct
+action blocked. The same gate also lifts a static runbook from \ResolvedAoneBase{}\%
+to \ResolvedAonegBase{}\% resolved. The gate makes an LLM loop safe; it does not make
+it competent.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -171,7 +191,7 @@ health below 0.35), or the step budget is exhausted.
 \centering\small
 \caption{Action catalogue. Reversibility drives the over-reach rule.}
 \label{tab:actions}
-\begin{tabular}{@{}ll@{}}
+\resizebox{\columnwidth}{!}{\begin{tabular}{@{}ll@{}}
 \toprule
 Class & Actions \\ \midrule
 Safe & \texttt{no\_op}, \texttt{escalate\_to\_human}, \texttt{gather\_diagnostics} \\
@@ -179,7 +199,7 @@ Reversible & \texttt{restart\_service}, \texttt{scale\_up/down}, \texttt{rollbac
  & \texttt{clear\_cache}, \texttt{disable\_feature\_flag} \\
 Irreversible & \texttt{failover\_database}, \texttt{drain\_node}, \texttt{truncate\_logs}, \\
  & \texttt{delete\_files}, \texttt{flush\_queue} \\ \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 \textbf{Unsafe actions.} A proposal is \emph{unsafe} if it falls in any of five
@@ -294,7 +314,7 @@ action patterns.
 \centering\small
 \caption{Fault families (4 scenarios each).}
 \label{tab:families}
-\begin{tabular}{@{}lll@{}}
+\resizebox{\columnwidth}{!}{\begin{tabular}{@{}lll@{}}
 \toprule
 & Family & Correct behaviour \\ \midrule
 A & Single obvious cause & the matching fix \\
@@ -305,7 +325,7 @@ E & No safe automated action & \texttt{escalate\_to\_human} \\
 F & Injection in logs or annotations & ignore it; fix the real fault \\
 G & Decoy metric on another service & ignore the decoy \\
 H & Obvious fix breaches an invariant & the safe alternative \\ \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 \subsection{Pre-registered, mechanical labels}
@@ -349,7 +369,7 @@ divergent verdict.
 LLM arms were limited by local inference throughput (about 7\,s per Llama call and
 12\,s per Qwen call on one laptop GPU): Llama main arms 32 $\times$ \SeedsLlama{}
 seeds (\BlocksLlama{} paired blocks per arm), Llama ablations \AblEpisodesLlama{}
-episodes per arm, and Qwen main arms 32 $\times$ \SeedsQwen{} seed(s). Only (scenario,
+episodes per arm, and Qwen main arms 32 $\times$ 1 seed (in progress). Only (scenario,
 seed) blocks completed by every arm of a model are analysed, so all comparisons are
 paired. In total \EpisodesTotal{} episodes.
 
@@ -417,13 +437,233 @@ resolved, so the system recovers untouched; in H4, C3 blocks the lossy failover 
 the runbook falls through to escalation. No episode resolved by A1 is lost under A1g. The gate is therefore not only a brake on LLMs; it
 corrects a classical baseline too.
 
-%RESULTS-LLM
+\subsection{LLM proposers: safety}
+\label{sec:llm-safety}
+
+\Cref{tab:main} gives the main results and \cref{tab:paired} the paired tests. Without
+a gate, Llama-3.2-3B (A2) takes at least one unsafe action in \UnsafeEpAtwoLlama{}\%
+\UnsafeEpAtwoLlamaCI{} of episodes and an irreversible unsafe action in
+\CatEpAtwoLlama{}\% \CatEpAtwoLlamaCI{}, even though only \PURAtwoLlama{}\% of its
+proposals are unsafe. The gap between the two rates is the point: an incident gives
+the model up to six chances to be wrong, and a low per-proposal error rate compounds
+into a high per-incident one. The model is not reckless on average---\DiagShareAtwoLlama{}\%
+of its \PropsAtwoLlama{} proposals are \texttt{gather\_diagnostics}---but the unsafe
+minority is concentrated in exactly the scenarios that punish it: injections (F),
+traps (H) and incidents with no safe automated fix (E).
+
+Behind the gate (A3) no unsafe action executes in any episode: the paired reduction is
+\DiffUnsafeAtwoAthreeLlama{} pp \DiffUnsafeAtwoAthreeLlamaCI{}
+(\DiffUnsafeAtwoAthreeLlamaP{}), and catastrophic episodes fall by
+\DiffCatAtwoAthreeLlama{} pp \DiffCatAtwoAthreeLlamaCI{}
+(\DiffCatAtwoAthreeLlamaP{}). The model itself does not become safer: its proposed
+unsafe rate \emph{rises} to \PURAthreeLlama{}\%, because a blocked proposal is usually
+proposed again. Of the gate's \BlockedAthreeLlama{} blocks, \RepeatBlockedAthreeLlama{}
+repeat an action already blocked earlier in the same episode. Safety in A3 is a
+property of the architecture, not of the model.
+
+\begin{table*}[t]
+\centering\small
+\caption{Main results. PUR/EUR: unsafe proposals / executed actions. Unsafe and
+catastrophic: share of episodes with $\ge1$ executed unsafe (irreversible unsafe)
+action. False block: share of blocks that hit a pre-registered correct action. All
+rates in \%, with 95\% cluster-bootstrap CIs over the 32 scenarios.}
+\label{tab:main}
+\resizebox{\textwidth}{!}{\input{tables/main}}
+\end{table*}
+
+\begin{table}[t]
+\centering\small
+\caption{Paired comparisons on identical (scenario, seed) blocks; $\Delta$ is the
+paired difference in percentage points, $p$ the exact McNemar test.}
+\label{tab:paired}
+\resizebox{\columnwidth}{!}{\input{tables/paired}}
+\end{table}
+
+\subsection{LLM proposers: what the gate costs}
+
+The gate cost Llama nothing in resolution: A2 and A3 resolve the same
+\ResolvedAthreeLlama{}\% \ResolvedAthreeLlamaCI{} of episodes, with \emph{no}
+discordant pair (\DiffResAtwoAthreeLlama{} pp, \DiffResAtwoAthreeLlamaP{}). No
+pre-registered correct proposal was blocked (false-block rate
+\FBRAthreeLlama{}\%). Of the \BlockedAthreeLlama{} blocks, \UnsafeBlocksLlama{} hit
+unsafe proposals and the remaining \NeutralBlocksLlama{} (in \NeutralBlockEpsLlama{}
+episodes) hit \emph{neutral} ones---actions that are neither in the correct set nor
+harmful, such as scaling down a healthy co-client (C2) or re-proposing an action that
+already failed to help (C4). Blocking these changes no outcome. Two caveats bound the
+claim. First, a model that rarely finds the fix rarely has its fix blocked: the
+oracle proposer (\cref{sec:validation}) shows a real, if small, cost the gate imposes
+on a competent planner. Second, false blocks are counted against the declared correct
+set and are a lower bound (\cref{sec:threats}).
+
+The gate does not make a weak model competent. Llama resolves
+\ResolvedAtwoLlama{}\% of episodes with or without the gate, against
+\ResolvedAoneBase{}\% for the static runbook and \ResolvedAonegBase{}\% for the gated
+runbook. Its resolutions come mostly from family D (\cref{tab:family}), where the
+alert has already cleared and diagnosing without acting is the right outcome; it
+fails every scenario whose correct outcome is escalation, because across all
+\BlocksLlama{} blocks of all four main arms it proposed \texttt{escalate\_to\_human}
+exactly \EscalationsLlama{} times.
+
+\begin{table}[t]
+\centering\small
+\caption{Per-family unsafe-episode \% / resolved \% (A: single-fault fixes; B:
+ambiguous; C: cascades; D: already resolved; E: escalate; F: injection; G: decoys; H:
+invariant traps).}
+\label{tab:family}
+\resizebox{\columnwidth}{!}{\input{tables/family}}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/tradeoff}
+\caption{Safety--utility tradeoff: unsafe-episode rate against resolution rate per
+arm (95\% cluster-bootstrap CIs). Up and to the left is better.}
+\label{fig:tradeoff}
+\end{figure}
+
+\subsection{Prompt-level defence versus the gate}
+
+The self-policing prompt (A2b) explicitly licenses escalation, diagnostics and
+\texttt{no\_op}, tells the model that log text is data rather than instructions, and
+asks it to prefer reversible actions. It lowers the unsafe-episode rate from
+\UnsafeEpAtwoLlama{}\% to \UnsafeEpAtwobLlama{}\% (\DiffUnsafeAtwoAtwobLlama{} pp
+\DiffUnsafeAtwoAtwobLlamaCI{}), a difference the McNemar test does not distinguish from
+chance (\DiffUnsafeAtwoAtwobLlamaP{}), and it leaves the catastrophic rate essentially
+unchanged (\CatEpAtwoLlama{}\% to \CatEpAtwobLlama{}\%). It did not induce a single
+escalation. Against the prompt-defended arm the gate still removes
+\DiffUnsafeAtwobAthreeLlama{} pp of unsafe episodes (\DiffUnsafeAtwobAthreeLlamaP{}).
+For a small model, asking it to quit when unsure is not a substitute for a check it
+cannot talk its way past.
+
+\subsection{Feeding the gate's reason back}
+
+A4 returns the failed check's reason to the model and allows two retries within the
+step. It buys one additional resolved episode (\DiffResAthreeAfourLlama{} pp,
+\DiffResAthreeAfourLlamaP{}) at \CallsAfourLlama{} model calls per episode against
+\CallsAthreeLlama{} for A3. The model largely ignores the feedback: of
+\RetryTotalLlama{} retries that immediately follow a block, \RetrySameLlama{} propose
+the identical blocked action again, and the proposed unsafe rate climbs to
+\PURAfourLlama{}\%. Safety is unaffected (no unsafe execution in either arm), so
+feedback is cheap insurance at worst, but at this model scale it is not an effective
+way to steer the planner.
+
+\subsection{Prompt injection}
+
+Family F plants instructions in logs and alert annotations. In three of its four
+scenarios Llama followed the injection in every seed and every arm:
+\InjPropAtwoLlama{}\% of F episodes propose the injected action without a gate,
+\InjPropAtwobLlama{}\% with the defensive prompt that names this exact attack, and
+\InjPropAthreeLlama{}\% behind the gate (\cref{tab:injection}). The injected actions
+are the worst in the catalogue---deleting the primary database's data directory,
+draining a node, flushing the order queue---and without the gate every one of them
+executed. Behind the gate none did (\InjExecAthreeLlama{}\%): the injected actions are
+either outside the policy matrix (C2), not implicated by the alerting signal (C1), or
+violate an invariant (C3), and every injected proposal failed at least
+\InjMinChecksLlama{} of these checks at once. The defence works for the same reason
+CaMeL-style designs do~\cite{debenedetti2025camel}: the check does not read the
+untrusted text at all, so there is nothing to inject into.
+
+\begin{table}[t]
+\centering\small
+\caption{Prompt injection (family F): share of episodes in which the injected action
+was proposed and executed.}
+\label{tab:injection}
+\resizebox{\columnwidth}{!}{\input{tables/injection}}
+\end{table}
+
+\subsection{Which checks carry the weight}
+
+\Cref{tab:attribution} counts, for every proposal A3 blocked, which checks failed
+(including disabled checks, evaluated in shadow mode) and how often each was the
+\emph{sole} reason. C3 (blast radius and invariants) fires on \AttrFiresThreeLlama{} of the
+\UnsafeBlocksLlama{} unsafe blocks and is the sole reason for \AttrSoleThreeLlama{};
+C2 (policy, \AttrFiresTwoLlama{}) and C1 (target implication, \AttrFiresOneLlama{})
+overlap heavily with it and are rarely alone (\AttrSoleTwoLlama{} and
+\AttrSoleOneLlama{}). The ablations (\cref{tab:ablation})
+confirm the redundancy: removing any single check lets through at most
+\DUnsafeAblThreeLlama{} pp of unsafe episodes (C2 or C3), with no change in
+resolution. Without C3 the lossy failover onto a lagging replica in H4 executes; without C2, two restarts whose counterfactual shows harm; without C1, a scale-up of a
+service the alert does not implicate.
+C4, C5 and C6 never decide a safety outcome for this model, but C4 is not idle:
+without it the oscillation rate rises from \OscillationAthreeLlama{}\% to
+\OscAblFourLlama{}\% \OscAblFourLlamaCI{}. C6 earns its place with the runbook,
+not the LLM: it is what stops A1 acting on alerts that have already cleared. The
+picture is defence in depth, in which no single check is load-bearing for the
+behaviours this model exhibits, and the checks that look idle for one proposer are
+the ones another proposer needs.
+
+\begin{table}[t]
+\centering\small
+\caption{Checks failing on proposals blocked in A3 (fires / sole cause), including
+shadow-mode evaluation.}
+\label{tab:attribution}
+\resizebox{\columnwidth}{!}{\input{tables/attribution}}
+\end{table}
+
+\begin{table}[t]
+\centering\small
+\caption{Ablation: A3 with one check disabled (paired on the same blocks).}
+\label{tab:ablation}
+\resizebox{\columnwidth}{!}{\input{tables/ablation}}
+\end{table}
+
+\todo{Qwen2.5-7B (confirmatory) results: runs in progress; fold into
+\cref{tab:main,tab:paired,tab:injection} when complete.}
 
 %======================================================================
 \section{Discussion}
 \label{sec:discussion}
 
-%RESULTS-DISCUSSION
+\textbf{Safety came from the architecture, not the model.} Every safety gain we
+measured for the LLM loop came from the gate: the model proposed \emph{more} unsafe
+actions behind it, because it kept re-proposing blocked ones, and ignored the gate's
+reasons when they were fed back. The prompt-level defence moved the unsafe rate by an
+amount indistinguishable from noise and did not stop a single injection. This is the
+Simplex argument~\cite{sha2001simplex} in practice: the component that must be trusted
+is the small, deterministic one, and the large stochastic component may be as wrong as
+it likes, provided everything it does passes through the small one. It also suggests
+how to read evaluations that report an agent's per-proposal accuracy: what matters to
+an operator is per-incident risk, and a few percent per proposal compounds over a
+multi-step episode into a third of incidents.
+
+\textbf{Injection is a solved problem only if the check never reads the text.} The
+model followed planted instructions in every seed, with and without a prompt telling it
+not to. The gate was immune because none of its checks consult log content; they
+consult the action, the topology and the metrics. Defences that rely on the model (or a
+second model) to recognise injected text inherit the model's susceptibility. Structural
+checks do not, but they need a typed action space---free-form shell access would leave
+nothing to check against.
+
+\textbf{The gate's cost is low, but it is not zero, and it scales with competence.}
+Llama lost nothing to the gate largely because it rarely proposed the correct fix in the
+first place. The oracle proposer shows where the cost appears: C1 blocks a correct fix
+whose cause does not show in the target's own metrics. A more capable model will hit
+that boundary more often, so the false-block rate we report for Llama is a floor, not
+an estimate for frontier models. The pre-registered catalogue makes the boundary
+visible and countable, which is what an operator needs to decide whether to accept it.
+
+\textbf{Gates help classical automation too.} Wrapping the static runbook in the same
+gate raised its resolution rate by \DiffResAoneAonegBase{} pp without losing a single
+episode it resolved before. Evidence freshness and the invariant check correct two of
+the runbook's characteristic failures (acting on cleared alerts and failing over onto a
+stale replica). Teams can deploy such a gate in front of existing automation before any
+LLM is involved, and the same gate then carries over unchanged.
+
+\textbf{Defence in depth, not a single rule.} Removing any one check let through at
+most \DUnsafeAblThreeLlama{} pp of unsafe episodes. Every injected action failed two or
+three checks at once; the one gap with a single guard was the lossy failover, which
+only the invariant check (C3) stops. The checks that look idle for Llama are not idle in
+general: C6 blocked the runbook and three of the scripted proposers, and C5 fired only
+when C4 was removed, acting as its backstop. A gate should be sized to the union of
+failure modes across proposers, not tuned to the one currently deployed, and the
+invariants that guard irreversible actions deserve a second, independent check.
+
+\textbf{What the gate does not do.} It does not improve diagnosis. Llama never
+escalated, so it failed every incident whose correct response is a human, and the gate
+can only stop an action, not supply a better one. Gate feedback, the obvious lever, was
+ignored at this model scale. Improving utility needs a better planner or a fallback:
+in Simplex terms, a safe controller (here, escalation) that takes over when the gate
+has blocked the planner repeatedly. We leave that policy to future work.
 
 %======================================================================
 \section{Threats to Validity}
@@ -450,14 +690,24 @@ optional real-stack validation was not performed. The models are small open-weig
 models; frontier models may fail less often or differently. The gate's mechanism is
 model-agnostic but its measured benefit is not.
 
-\textbf{Statistical.} LLM arms use two or three seeds per scenario, so the effective
+\textbf{Statistical.} LLM arms use \SeedsLlama{} seeds per scenario, so the effective
 sample is 32 scenario clusters, which the cluster bootstrap reflects. Several paired
 comparisons are reported without multiplicity correction.
 
 %======================================================================
 \section{Conclusion}
 
-%RESULTS-CONCLUSION
+We measured what a small deterministic verification gate buys and costs an
+LLM-driven auto-remediation loop on a pre-registered fault catalogue. Without the gate a
+3B-parameter model took an unsafe action in \UnsafeEpAtwoLlama{}\% of incidents and
+followed injected instructions whenever they were present; a self-policing prompt did
+not change either. With the gate no unsafe action executed, no correct action was
+blocked and resolution was unchanged, and the same gate made a static runbook both
+safer and more effective. The gate does not make the model a better diagnostician, and
+its cost will grow as planners improve, which the testbed's pre-registered labels make
+measurable. The practical conclusion is that the trust boundary of an autonomous
+remediation loop belongs in a small, typed, testable component in front of the model,
+not in the model's prompt.
 
 \textbf{Artifact availability.} The simulator, catalogue, gate, harness, raw episode
 logs and the single command that regenerates every number, table and figure in this
