@@ -11,3 +11,15 @@ llama3.2-3b,correct,C3,0,0,0
 llama3.2-3b,correct,C4,0,0,0
 llama3.2-3b,correct,C5,0,0,0
 llama3.2-3b,correct,C6,0,0,0
+qwen2.5-7b,unsafe,C1,34,13,0
+qwen2.5-7b,unsafe,C2,34,18,0
+qwen2.5-7b,unsafe,C3,34,34,15
+qwen2.5-7b,unsafe,C4,34,0,0
+qwen2.5-7b,unsafe,C5,34,0,0
+qwen2.5-7b,unsafe,C6,34,0,0
+qwen2.5-7b,correct,C1,1,0,0
+qwen2.5-7b,correct,C2,1,0,0
+qwen2.5-7b,correct,C3,1,0,0
+qwen2.5-7b,correct,C4,1,0,0
+qwen2.5-7b,correct,C5,1,1,1
+qwen2.5-7b,correct,C6,1,0,0
