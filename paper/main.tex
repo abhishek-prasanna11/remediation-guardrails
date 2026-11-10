@@ -375,7 +375,49 @@ cluster-bootstrap CI.
 \section{Results}
 \label{sec:results}
 
-%RESULTS-BODY
+\subsection{Gate validation with scripted proposers}
+\label{sec:validation}
+
+Before any model ran, the gate was exercised against five scripted proposers that
+reproduce one failure mode each at zero API cost (\cref{tab:mocks}; 480 episodes per
+cell). Ungated, the hallucinator and the over-reacher take an unsafe action in every
+episode, and the over-reacher is catastrophic in every episode. Gated, the
+over-reacher, oscillator and injection follower execute no unsafe action at all. The
+hallucinator is held to \UnsafeEpMhallGated{}\% of episodes: the residue is
+wrong-target actions on services that \emph{are} near the incident (a co-client of a
+degraded dependency, or another alerting service) but are not its cause, which a
+structural target check cannot distinguish from the root cause. The oracle proposer
+bounds the gate's cost from below: it resolves every episode ungated and
+\ResolvedMcorrGated{}\% gated, the loss coming entirely from the invisible cache
+corruption that C1 is known to block.
+
+\begin{table}[t]
+\centering\small
+\caption{Gate validation against scripted failure-mode proposers (32 scenarios
+$\times$ 15 seeds per cell; 95\% cluster-bootstrap CIs).}
+\label{tab:mocks}
+\resizebox{\columnwidth}{!}{\input{tables/mocks}}
+\end{table}
+
+\subsection{Non-LLM baselines}
+
+A random valid action (A0) executes an unsafe action in \UnsafeEpAzeroBase{}\%
+\UnsafeEpAzeroBaseCI{} of episodes, the floor any proposer must beat. The static
+runbook (A1) is far safer---\UnsafeEpAoneBase{}\% \UnsafeEpAoneBaseCI{} unsafe
+episodes---but resolves only \ResolvedAoneBase{}\% \ResolvedAoneBaseCI{}: it acts on
+the paged service, so it fails in every cascade where the paged service is the victim
+(family C), on every alert that has already cleared (D), on decoys and traps where the
+paged service is the wrong one (G, H), and in H4 it fails over onto a replica
+45\,s behind. Placing the same runbook behind the gate (A1g) removes every
+unsafe execution and \emph{raises} resolution to \ResolvedAonegBase{}\%
+\ResolvedAonegBaseCI{} (paired difference \DiffResAoneAonegBase{} pp
+\DiffResAoneAonegBaseCI{}, \DiffResAoneAonegBaseP{}). Every gained episode is one of
+two kinds: in family D, C6 blocks the runbook's action on an incident that has already
+resolved, so the system recovers untouched; in H4, C3 blocks the lossy failover and
+the runbook falls through to escalation. No episode resolved by A1 is lost under A1g. The gate is therefore not only a brake on LLMs; it
+corrects a classical baseline too.
+
+%RESULTS-LLM
 
 %======================================================================
 \section{Discussion}
