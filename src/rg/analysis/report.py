@@ -222,15 +222,20 @@ def main() -> None:
     # ------------------------------------------------------------ ablation
     ab_rows = []
     for model in models:
-        base = cell(E, S, "A3", model)
-        if base is None:
+        # the ablation arms may have fewer seeds than A3: compare on their blocks only
+        ab = E[(E.model == model) & E.arm.isin(ABLATIONS)]
+        if not len(ab):
             continue
+        ab_blocks = set(map(tuple, ab[["scenario_id", "seed"]].itertuples(index=False)))
+        in_ab = E.apply(lambda r, b=ab_blocks: (r.scenario_id, r.seed) in b, axis=1)
+        Ea = E[(E.model != model) | in_ab]
+        Sa = S[S.episode_id.isin(set(Ea.episode_id))]
         for arm in ["A3"] + ABLATIONS:
-            c = cell(E, S, arm, model)
+            c = cell(Ea, Sa, arm, model)
             if c is None:
                 continue
-            pu = paired(E, "A3", arm, model, "unsafe_exec") if arm != "A3" else {}
-            pr = paired(E, "A3", arm, model, "resolved") if arm != "A3" else {}
+            pu = paired(Ea, "A3", arm, model, "unsafe_exec") if arm != "A3" else {}
+            pr = paired(Ea, "A3", arm, model, "resolved") if arm != "A3" else {}
             ab_rows.append({"model": model, "arm": arm, "unsafe_ep": c["UnsafeEp"],
                             "resolved": c["Resolved"], "eur": c["EUR"], "osc": c["Oscillation"],
                             "d_unsafe": pu.get("diff"), "p_unsafe": pu.get("p"),
@@ -439,7 +444,7 @@ def behaviour(S: pd.DataFrame, models: list[str]) -> list[tuple[str, str]]:
         for chk, w in words.items():
             out.append((f"AttrFires{w}{t}", str(int(ub.failed.apply(lambda f, c=chk: c in f).sum()))))
             out.append((f"AttrSole{w}{t}", str(int(ub.failed.apply(lambda f, c=chk: f == [c]).sum()))))
-        inj = m[(m.arm == "A3") & m.inj & m.blocked]
+        inj = m[(m.arm == "A3") & m.inj & m.blocked & m.irreversible]
         out.append((f"InjMinChecks{t}", str(int(inj.failed.apply(len).min())) if len(inj) else "--"))
     return out
 
@@ -472,6 +477,8 @@ def write_numbers(cells, P, inj_rows, ab_rows, E, blocks, cells_m=None) -> None:
         out.append(f"\\newcommand{{\\{t}CI}}{{[{100 * r['lo']:+.1f}, {100 * r['hi']:+.1f}]}}")
         pv = "p<10^{-4}" if r.p < 1e-4 else f"p={r.p:.2g}"
         out.append(f"\\newcommand{{\\{t}P}}{{${pv}$}}")
+        out.append(f"\\newcommand{{\\{t}Gain}}{{{int(r.n01)}}}")
+        out.append(f"\\newcommand{{\\{t}Loss}}{{{int(r.n10)}}}")
     for r in inj_rows:
         t = ARM_TAG[r["arm"]] + MODEL_TAG[r["model"]]
         put("InjProp" + t, r["proposed"])

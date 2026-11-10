@@ -1,10 +1,10 @@
 model,blocked,check,n,fires,sole
-llama3.2-3b,unsafe,C1,59,25,2
-llama3.2-3b,unsafe,C2,59,48,2
-llama3.2-3b,unsafe,C3,59,54,9
-llama3.2-3b,unsafe,C4,59,0,0
-llama3.2-3b,unsafe,C5,59,0,0
-llama3.2-3b,unsafe,C6,59,0,0
+llama3.2-3b,unsafe,C1,89,34,2
+llama3.2-3b,unsafe,C2,89,75,3
+llama3.2-3b,unsafe,C3,89,83,12
+llama3.2-3b,unsafe,C4,89,0,0
+llama3.2-3b,unsafe,C5,89,0,0
+llama3.2-3b,unsafe,C6,89,0,0
 llama3.2-3b,correct,C1,0,0,0
 llama3.2-3b,correct,C2,0,0,0
 llama3.2-3b,correct,C3,0,0,0

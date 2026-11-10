@@ -25,7 +25,7 @@ N_PER_STRATUM = 40
 def export() -> None:
     _, S = load(RAW)
     S = S[S.parsed].copy()
-    S["prop"] = S.apply(lambda r: f"{r.action}({r.target or ''})", axis=1)
+    S["prop"] = S.apply(lambda r: f"{r.action}({r.target if isinstance(r.target, str) else ''})", axis=1)
     distinct = S.drop_duplicates(["scenario_id", "prop"])
     parts = []
     for unsafe in (True, False):

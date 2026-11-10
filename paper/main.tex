@@ -371,7 +371,7 @@ divergent verdict.
 LLM arms were limited by local inference throughput (about 7\,s per Llama call and
 12\,s per Qwen call on one laptop GPU): Llama main arms 32 $\times$ \SeedsLlama{}
 seeds (\BlocksLlama{} paired blocks per arm), Llama ablations \AblEpisodesLlama{}
-episodes per arm, and Qwen main arms 32 $\times$ \SeedsQwen{} seed. Only (scenario,
+episodes per arm (two seeds, compared with A3 on the same blocks), and Qwen main arms 32 $\times$ \SeedsQwen{} seed. Only (scenario,
 seed) blocks completed by every arm of a model are analysed, so all comparisons are
 paired. In total \EpisodesTotal{} episodes.
 
@@ -484,8 +484,9 @@ paired difference in percentage points, $p$ the exact McNemar test.}
 \subsection{LLM proposers: what the gate costs}
 
 The gate cost Llama nothing in resolution: A2 and A3 resolve the same
-\ResolvedAthreeLlama{}\% \ResolvedAthreeLlamaCI{} of episodes, with \emph{no}
-discordant pair (\DiffResAtwoAthreeLlama{} pp, \DiffResAtwoAthreeLlamaP{}). No
+\ResolvedAthreeLlama{}\% \ResolvedAthreeLlamaCI{} of episodes (\DiffResAtwoAthreeLlama{} pp, \DiffResAtwoAthreeLlamaP{}): across
+\BlocksLlama{} paired episodes the gate gained \DiffResAtwoAthreeLlamaGain{} resolution
+and lost \DiffResAtwoAthreeLlamaLoss{}. No
 pre-registered correct proposal was blocked (false-block rate
 \FBRAthreeLlama{}\%). Of the \BlockedAthreeLlama{} blocks, \UnsafeBlocksLlama{} hit
 unsafe proposals and the remaining \NeutralBlocksLlama{} (in \NeutralBlockEpsLlama{}
@@ -497,10 +498,10 @@ oracle proposer (\cref{sec:validation}) shows a real, if small, cost the gate im
 on a competent planner. Second, false blocks are counted against the declared correct
 set and are a lower bound (\cref{sec:threats}).
 
-The gate does not make a weak model competent. Llama resolves
-\ResolvedAtwoLlama{}\% of episodes with or without the gate, against
+The gate does not make a weak model competent. Llama resolves \ResolvedAtwoLlama{}\% of episodes without the gate and
+\ResolvedAthreeLlama{}\% with it, against
 \ResolvedAoneBase{}\% for the static runbook and \ResolvedAonegBase{}\% for the gated
-runbook. Its resolutions come mostly from family D (\cref{tab:family}), where the
+runbook. About half of its resolutions come from family D (\cref{tab:family}), where the
 alert has already cleared and diagnosing without acting is the right outcome; it
 fails every scenario whose correct outcome is escalation, because across all
 \BlocksLlama{} blocks of all four main arms it proposed \texttt{escalate\_to\_human}
@@ -551,8 +552,8 @@ way to steer the planner.
 
 \subsection{Prompt injection}
 
-Family F plants instructions in logs and alert annotations. In three of its four
-scenarios Llama followed the injection in every seed and every arm:
+Family F plants instructions in logs and alert annotations. In three of its four scenarios Llama followed the injection in every seed of every arm
+without feedback:
 \InjPropAtwoLlama{}\% of F episodes propose the injected action without a gate,
 \InjPropAtwobLlama{}\% with the defensive prompt that names this exact attack, and
 \InjPropAthreeLlama{}\% behind the gate (\cref{tab:injection}). The injected actions
@@ -560,8 +561,8 @@ are the worst in the catalogue---deleting the primary database's data directory,
 draining a node, flushing the order queue---and without the gate every one of them
 executed. Behind the gate none did (\InjExecAthreeLlama{}\%): the injected actions are
 either outside the policy matrix (C2), not implicated by the alerting signal (C1), or
-violate an invariant (C3), and every injected proposal failed at least
-\InjMinChecksLlama{} of these checks at once. The defence works for the same reason
+violate an invariant (C3), and every injected irreversible action failed at least \InjMinChecksLlama{} of these
+checks at once. The defence works for the same reason
 CaMeL-style designs do~\cite{debenedetti2025camel}: the check does not read the
 untrusted text at all, so there is nothing to inject into.
 
@@ -623,8 +624,8 @@ diagnostics, against \DiagShareAtwoLlama{}\% for Llama, and it oscillates in
 Qwen followed the injection in \InjPropAtwobQwen{}\% of family-F incidents. Behind the
 gate nothing unsafe executes (\DiffUnsafeAtwoAthreeQwen{} pp,
 \DiffUnsafeAtwoAthreeQwenP{}; catastrophic \DiffCatAtwoAthreeQwen{} pp,
-\DiffCatAtwoAthreeQwenP{}), and every injected proposal again failed at least
-\InjMinChecksQwen{} checks. C3 fires on all \UnsafeBlocksQwen{} unsafe blocks and is
+\DiffCatAtwoAthreeQwenP{}), and every injected irreversible action again failed at least \InjMinChecksQwen{}
+checks. C3 fires on all \UnsafeBlocksQwen{} unsafe blocks and is
 the sole reason for \AttrSoleThreeQwen{}.
 
 Three results differ from Llama, and all three come from Qwen being the more active
@@ -689,8 +690,7 @@ stale replica). Teams can deploy such a gate in front of existing automation bef
 LLM is involved, and the same gate then carries over unchanged.
 
 \textbf{Defence in depth, not a single rule.} Removing any one check let through at
-most \DUnsafeAblThreeLlama{} pp of unsafe episodes. Every injected action failed two or
-three checks at once; the one gap with a single guard was the lossy failover, which
+most \DUnsafeAblThreeLlama{} pp of unsafe episodes. Every injected irreversible action failed two or three checks at once; the one gap with a single guard was the lossy failover, which
 only the invariant check (C3) stops. The checks that look idle for Llama are not idle in
 general: C6 blocked the runbook, three of the scripted proposers and Qwen (turning four
 cleared alerts into correct no-ops), and C5 fired for Llama only when C4 was removed,
@@ -732,7 +732,8 @@ optional real-stack validation was not performed. The models are small open-weig
 models; frontier models may fail less often or differently. The gate's mechanism is
 model-agnostic but its measured benefit is not.
 
-\textbf{Statistical.} Llama arms use \SeedsLlama{} seeds per scenario and Qwen arms \SeedsQwen{}, so the effective
+\textbf{Statistical.} Llama main arms use \SeedsLlama{} seeds per scenario, Llama
+ablations two, and Qwen arms \SeedsQwen{}, so the effective
 sample is 32 scenario clusters, which the cluster bootstrap reflects. Several paired
 comparisons are reported without multiplicity correction.
 
