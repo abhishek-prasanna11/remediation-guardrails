@@ -50,7 +50,7 @@ escalates. Only approved proposals execute. Everything is logged; the logs are t
 | 9 | Docker validation *(optional)* | not done |
 | 10 | Experiments + paper | done: Llama-3.2-3B (3 seeds main, 2 seeds ablations) and Qwen2.5-7B (1 seed, main) written up |
 
-Still open before submission: the independent rater's Cohen's κ (`rg irr`). Also the
+Still open before submission: the independent rater's Cohen's κ (sheet sent with `docs/irr-rater-guide.md`; when it returns, save it over `results/derived/irr_sheet.csv` and run `rg analyze`). Also the
 `TODO` bibliography entries in `paper/refs.bib`, the author list, and the target venue.
 
 ## Reproduce

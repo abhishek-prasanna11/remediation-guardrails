@@ -149,6 +149,7 @@ Episodes: 7136. Catalogue sha256: 26d10d8a493d5b7b7ae914e6f457dc3a7d0848b86dcd58
 | AttrSoleFiveLlama | 0 |
 | AttrFiresSixLlama | 0 |
 | AttrSoleSixLlama | 0 |
+| SecPerCallLlama | 9 |
 | InjMinChecksLlama | 2 |
 | PropsAtwoQwen | 102 |
 | DiagAtwoQwen | 7 |
@@ -176,5 +177,7 @@ Episodes: 7136. Catalogue sha256: 26d10d8a493d5b7b7ae914e6f457dc3a7d0848b86dcd58
 | AttrSoleFiveQwen | 0 |
 | AttrFiresSixQwen | 0 |
 | AttrSoleSixQwen | 0 |
+| SecPerCallQwen | 15 |
 | InjMinChecksQwen | 2 |
+| IrrRows | 80 |
 

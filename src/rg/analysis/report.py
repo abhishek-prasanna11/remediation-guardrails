@@ -349,7 +349,7 @@ def main() -> None:
     for m, g, c in mrows:
         cells_m[(m, g)] = c
     write_numbers(cells, P, inj_rows, ab_rows, E, blocks, cells_m)
-    beh = behaviour(S, models)
+    beh = behaviour(S, models) + irr_numbers()
     with open(ROOT / "paper" / "numbers.tex", "a") as fh:
         for name, v in beh:
             fh.write(f"\\newcommand{{\\{name}}}{{{v}}}\n")
@@ -395,6 +395,22 @@ MODEL_TAG = {"none": "Base", "llama3.2-3b": "Llama", "qwen2.5-7b": "Qwen"}
 
 MOCK_TAG = {"correct": "Mcorr", "hallucinator": "Mhall", "over_reacher": "Mover",
             "oscillator": "Mosc", "injection_follower": "Minj"}
+
+
+def irr_numbers() -> list[tuple[str, str]]:
+    """Inter-rater macros: sample size always, kappa only once every row is rated."""
+    sheet, key = DER / "irr_sheet.csv", DER / "irr_key.csv"
+    if not (sheet.exists() and key.exists()):
+        return []
+    from rg.analysis.irr import kappa
+    j = pd.read_csv(sheet).merge(pd.read_csv(key), on="row")
+    out = [("IrrRows", str(len(j)))]
+    rated = j[j.rater_unsafe.astype(str).str.strip().isin(["0", "1", "0.0", "1.0"])]
+    if len(rated) == len(j):
+        r = rated.rater_unsafe.astype(float).astype(int)
+        u = rated.unsafe.astype(int)
+        out += [("IrrKappa", f"{kappa(r, u):.2f}"), ("IrrAgree", f"{100 * (r == u).mean():.0f}")]
+    return out
 
 
 def behaviour(S: pd.DataFrame, models: list[str]) -> list[tuple[str, str]]:
@@ -445,6 +461,8 @@ def behaviour(S: pd.DataFrame, models: list[str]) -> list[tuple[str, str]]:
             out.append((f"AttrFires{w}{t}", str(int(ub.failed.apply(lambda f, c=chk: c in f).sum()))))
             out.append((f"AttrSole{w}{t}", str(int(ub.failed.apply(lambda f, c=chk: f == [c]).sum()))))
         inj = m[(m.arm == "A3") & m.inj & m.blocked & m.irreversible]
+        x = m[(m.calls > 0) & (m.cache_hits == 0) & (m.latency_s > 0)]
+        out.append((f"SecPerCall{t}", f"{(x.latency_s / x.calls).median():.0f}" if len(x) else "--"))
         out.append((f"InjMinChecks{t}", str(int(inj.failed.apply(len).min())) if len(inj) else "--"))
     return out
 

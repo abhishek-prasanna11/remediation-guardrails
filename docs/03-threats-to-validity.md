@@ -12,9 +12,11 @@ the gate. Three mitigations are in place:
 - Labelling is mechanical: patterns plus a counterfactual simulation, with no judgement
   calls after seeing results.
 
-The labeller never imports the gate. The strongest mitigation, an independent rater's
-Cohen's κ on a blinded sample, is tooled (`rg irr`) but **has not been run**. It must
-exist before submission.
+The labeller never imports the gate. The strongest mitigation is an independent rater's
+Cohen's κ on a blinded, stratified sample of 80 distinct proposals. The sheet has been
+exported (`rg irr export`) and sent with [`irr-rater-guide.md`](irr-rater-guide.md);
+**rating is pending**. Once the filled sheet is saved over
+`results/derived/irr_sheet.csv`, `rg analyze` writes κ into the paper.
 
 **The gate was adjusted during mock validation.** Two changes were made after the gate
 first ran against the scripted mocks, and both happened before any LLM call:

@@ -68,7 +68,8 @@ ready but **not yet run**:
 
 ```bash
 rg irr export   # blinded, stratified sheet: results/derived/irr_sheet.csv
-# a teammate fills rater_unsafe (0/1) using only this document
+# a rater fills rater_unsafe (0/1) using only docs/irr-rater-guide.md
+# (definitions + true faults, but not the per-scenario action lists below)
 rg irr score    # Cohen's kappa against the mechanical labels
 ```
 
