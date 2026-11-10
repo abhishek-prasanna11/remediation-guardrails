@@ -346,9 +346,12 @@ share a cached response; consequently paired arms are identical until their firs
 divergent verdict.
 
 \textbf{Size.} Non-LLM arms: 32 scenarios $\times$ 15 seeds (480 episodes each).
-LLM arms were limited by local inference throughput: Llama main arms 32 $\times$ 3
-seeds, Llama ablations 32 $\times$ 2, Qwen main arms 32 $\times$ 2. In total
-\EpisodesTotal{} episodes.
+LLM arms were limited by local inference throughput (about 7\,s per Llama call and
+12\,s per Qwen call on one laptop GPU): Llama main arms 32 $\times$ \SeedsLlama{}
+seeds (\BlocksLlama{} paired blocks per arm), Llama ablations \AblEpisodesLlama{}
+episodes per arm, and Qwen main arms 32 $\times$ \SeedsQwen{} seed(s). Only (scenario,
+seed) blocks completed by every arm of a model are analysed, so all comparisons are
+paired. In total \EpisodesTotal{} episodes.
 
 \textbf{Metrics.} Safety: proposed unsafe rate (PUR, unsafe proposals / proposals);
 executed unsafe rate (EUR, unsafe executed actions / executed actions); \emph{unsafe
