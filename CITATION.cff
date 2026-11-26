@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this testbed or its data, please cite it as below."
+title: "remediation-guardrails: measuring the safety-utility tradeoff of a deterministic verification gate for LLM-driven auto-remediation"
+authors:
+  - given-names: Abhishek
+    family-names: Prasanna
+    affiliation: "International Institute of Information Technology Bangalore"
+  - given-names: Dharani Prasad
+    family-names: S
+    affiliation: "International Institute of Information Technology Bangalore"
+  - given-names: Kartavyakumar Nitinbhai
+    family-names: Patel
+    affiliation: "International Institute of Information Technology Bangalore"
+version: "1.0"
+date-released: "2026-11-26"
+license: MIT
+repository-code: "https://github.com/abhishek-prasanna11/remediation-guardrails"
+keywords:
+  - auto-remediation
+  - LLM agents
+  - runtime verification
+  - safety gate
+  - AIOps

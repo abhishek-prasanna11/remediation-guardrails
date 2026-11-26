@@ -1,7 +1,13 @@
 [project]
 name = "remediation-guardrails"
-version = "0.1.0"
+version = "1.0.0"
 description = "Testbed measuring the safety/utility tradeoff of a deterministic verification gate for LLM-driven auto-remediation"
+license = { text = "MIT" }
+authors = [
+  { name = "Abhishek Prasanna" },
+  { name = "Dharani Prasad S" },
+  { name = "Kartavyakumar Nitinbhai Patel" },
+]
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.7",

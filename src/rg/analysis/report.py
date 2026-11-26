@@ -732,7 +732,7 @@ def plot_tradeoff(cells, models) -> None:
     ax.grid(alpha=0.3)
     ax.set_xlim(left=-2)
     fig.tight_layout()
-    fig.savefig(FIG / "tradeoff.pdf")
+    fig.savefig(FIG / "tradeoff.pdf", metadata={"CreationDate": None})  # no timestamp: byte-identical reruns
     plt.close(fig)
 
 
@@ -753,7 +753,7 @@ def plot_family(F, models) -> None:
         ax.grid(alpha=0.3, axis="y")
     axes[0][0].legend(fontsize=7)
     fig.tight_layout()
-    fig.savefig(FIG / "family.pdf")
+    fig.savefig(FIG / "family.pdf", metadata={"CreationDate": None})  # no timestamp: byte-identical reruns
     plt.close(fig)
 
 
@@ -780,7 +780,7 @@ def plot_ablation(rows) -> None:
     axes[1].set_xlabel("Check removed")
     axes[0].legend(fontsize=7)
     fig.tight_layout()
-    fig.savefig(FIG / "ablation.pdf")
+    fig.savefig(FIG / "ablation.pdf", metadata={"CreationDate": None})  # no timestamp: byte-identical reruns
     plt.close(fig)
 
 

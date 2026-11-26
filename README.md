@@ -2,6 +2,7 @@
 
 **P03 — Guardrails for LLM-Driven Auto-Remediation: A Safety Evaluation**
 
+Abhishek Prasanna, Dharani Prasad S, Kartavyakumar Nitinbhai Patel
 Project Elective (4 credits), Aug–Dec 2026 · Dept. of CSE, IIIT Bangalore
 Faculty: Prof. B. Thangaraju
 
@@ -54,28 +55,54 @@ escalates. Only approved proposals execute. Everything is logged; the logs are t
 The inter-rater check is done: κ = 0.78 on the independent first pass, 0.95 after the
 rater re-checked one misread rule (both reported; see `docs/03-threats-to-validity.md`).
 
-Still open before submission:
-- the author list and order, and the target venue;
-- the repository URL in the paper's artifact statement (for double-blind review, set
-  `\anontrue` in `paper/main.tex` and use an anonymised mirror);
-- optionally, one stronger model (e.g. `qwen2.5:32b`, one seed of the main arms).
+The paper is in IEEE conference format; for a double-blind venue, set `\anontrue` in
+`paper/main.tex` and point the artifact statement at an anonymised mirror.
 
 ## Reproduce
+
+Setup and checks:
 
 ```bash
 uv venv --python 3.12 && uv pip install -e ".[dev]"
 .venv/bin/pytest -q                                   # 275 tests
 .venv/bin/rg validate                                 # configs + catalogue hash
-.venv/bin/rg run --arm A0,A1,A1g,A1d,M-correct-deny --seeds 0-14   # non-LLM arms
-ollama pull llama3.2 && ollama pull qwen2.5:7b
-.venv/bin/rg run --arm A2,A3,A2b,A4,A3d,A3p --model llama3.2-3b --seeds 0-2 --workers 2
-# supplementary, post hoc: gate-aware injection (family I), logged to results/raw_adaptive/
-.venv/bin/rg run --arm M-correct,M-correct-gated,M-injection_follower,M-injection_follower-gated \
-    --seeds 0-14 --catalogue adaptive
-.venv/bin/rg run --arm A2,A2b,A3,A4 --model llama3.2-3b --seeds 0-2 --catalogue adaptive
+```
+
+**From the published logs (minutes, no models needed).** The raw episode logs
+(8,352 main-catalogue episodes plus the supplementary family I) and the LLM response
+cache are attached to the
+[v1.0 release](https://github.com/abhishek-prasanna11/remediation-guardrails/releases/tag/v1.0)
+as `remediation-guardrails-raw-logs-v1.0.zip`. Unzip it at the repository root (it
+creates `results/raw/`, `results/raw_adaptive/` and `results/cache/`), then:
+
+```bash
 .venv/bin/rg analyze                                  # tables, figures, paper/numbers.tex
 cd paper && latexmk -pdf main.tex
 ```
+
+**From scratch (many hours; Ollama with `llama3.2` and `qwen2.5:7b`).**
+
+```bash
+# non-LLM arms and the five mocks, 15 seeds
+.venv/bin/rg run --arm A0,A1,A1g,A1d --seeds 0-14
+.venv/bin/rg run --arm M-correct,M-correct-gated,M-correct-deny,M-hallucinator,M-hallucinator-gated,M-over_reacher,M-over_reacher-gated,M-oscillator,M-oscillator-gated,M-injection_follower,M-injection_follower-gated --seeds 0-14
+ollama pull llama3.2 && ollama pull qwen2.5:7b
+# LLM arms: Llama-3.2-3B, 3 seeds (ablations 2 seeds); Qwen2.5-7B, 1 seed
+.venv/bin/rg run --arm A2,A3,A2b,A4,A3d,A3p --model llama3.2-3b --seeds 0-2 --workers 2
+.venv/bin/rg run --arm A5-C1,A5-C2,A5-C3,A5-C4,A5-C5,A5-C6 --model llama3.2-3b --seeds 0-1 --workers 2
+.venv/bin/rg run --arm A2,A3,A2b,A4,A3d,A3p --model qwen2.5-7b --seeds 0
+# supplementary, post hoc: gate-aware injection (family I), logged to results/raw_adaptive/
+.venv/bin/rg run --arm A1,A1g,M-correct,M-correct-gated,M-injection_follower,M-injection_follower-gated \
+    --seeds 0-14 --catalogue adaptive
+.venv/bin/rg run --arm A2,A2b,A3,A4 --model llama3.2-3b --seeds 0-2 --catalogue adaptive
+.venv/bin/rg run --arm A2,A2b,A3,A4 --model qwen2.5-7b --seeds 0 --catalogue adaptive
+.venv/bin/rg analyze
+```
+
+## License and citation
+
+Code and data are released under the [MIT License](LICENSE). To cite the testbed, use
+[`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button).
 
 ## Layout
 
@@ -88,10 +115,10 @@ cd paper && latexmk -pdf main.tex
 | `src/rg/gate/` | The verification gate C1–C6 |
 | `src/rg/faults/` | Episode setup and the pre-registered labeller |
 | `src/rg/harness/` | Episode loop and resumable runner |
-| `src/rg/analysis/` | Metrics, cluster bootstrap, McNemar, tables, figures, inter-rater tool |
+| `src/rg/analysis/` | Metrics, cluster bootstrap, scenario-level sign test, tables, figures, inter-rater tool |
 | `configs/` | Topology, gate policy, arms, models, **scenarios.yaml (frozen)** |
 | `docs/` | Plan, literature survey, phase plan, fault catalogue, threats, log schema |
-| `results/raw/` | Episode JSONL (git-ignored, regenerable) |
+| `results/raw/`, `results/raw_adaptive/` | Episode JSONL (git-ignored; published as the v1.0 release asset) |
 | `results/derived/` | Summary tables (tracked) |
 | `paper/` | IEEE conference paper; tables/figures/numbers are generated |
 
