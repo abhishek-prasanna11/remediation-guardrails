@@ -1,6 +1,5 @@
-% Bibliography. Details come from docs/01-literature-survey.md (checked against primary
-% sources). Entries with a "TODO" note had a detail the survey could not confirm:
-% open the primary source and fix them BEFORE submission.
+% Bibliography. Every entry was checked against its primary source (arXiv metadata,
+% the publisher or proceedings page, or the authors' repository).
 
 @article{kephart2003vision,
   author  = {Kephart, Jeffrey O. and Chess, David M.},
@@ -41,12 +40,12 @@
   doi       = {10.1109/ICSE48619.2023.00149}
 }
 
-@misc{chen2023rcacopilot,
-  author       = {Chen, Yinfang and others},
-  title        = {Automatic Root Cause Analysis via Large Language Models for Cloud Incidents},
-  howpublished = {arXiv:2305.15778},
-  year         = {2023},
-  note         = {TODO: confirm author list and final venue}
+@inproceedings{chen2024rcacopilot,
+  author    = {Chen, Yinfang and Xie, Huaibing and Ma, Minghua and Kang, Yu and Gao, Xin and Shi, Liu and Cao, Yunjie and Gao, Xuedong and Fan, Hao and Wen, Ming and Zeng, Jun and Ghosh, Supriyo and Zhang, Xuchao and Zhang, Chaoyun and Lin, Qingwei and Rajmohan, Saravan and Zhang, Dongmei and Xu, Tianyin},
+  title     = {Automatic Root Cause Analysis via Large Language Models for Cloud Incidents},
+  booktitle = {Proc. 19th European Conference on Computer Systems (EuroSys)},
+  year      = {2024},
+  doi       = {10.1145/3627703.3629553}
 }
 
 @inproceedings{roy2024exploring,
@@ -57,19 +56,49 @@
   doi       = {10.1145/3663529.3663841}
 }
 
-@misc{operaid2025,
-  author = {{TODO: OperAID authors}},
-  title  = {{OperAID}: Benchmarking {LLM} Agents for Autonomous {Kubernetes} Fault Remediation},
-  year   = {2025},
-  note   = {TODO: locate primary version, confirm authors and venue}
+@inproceedings{chen2025aiopslab,
+  author    = {Chen, Yinfang and Shetty, Manish and Somashekar, Gagan and Ma, Minghua and Simmhan, Yogesh and Mace, Jonathan and Bansal, Chetan and Wang, Rujia and Rajmohan, Saravan},
+  title     = {{AIOpsLab}: A Holistic Framework to Evaluate {AI} Agents for Enabling Autonomous Clouds},
+  booktitle = {Proc. Eighth Conference on Machine Learning and Systems (MLSys)},
+  year      = {2025}
 }
 
-@misc{microremed2025,
-  author       = {{TODO: MicroRemed authors}},
+@inproceedings{jha2025itbench,
+  author    = {Jha, Saurabh and Arora, Rohan and Watanabe, Yuji and Yanagawa, Takumi and Chen, Yinfang and Clark, Jackson and Bhavya, Bhavya and Verma, Mudit and Kumar, Harshit and Kitahara, Hirokuni and others},
+  title     = {{ITBench}: Evaluating {AI} Agents across Diverse Real-World {IT} Automation Tasks},
+  booktitle = {Proc. 42nd International Conference on Machine Learning (ICML)},
+  series    = {PMLR},
+  volume    = {267},
+  year      = {2025}
+}
+
+@inproceedings{chen2025stratus,
+  author    = {Chen, Yinfang and Pan, Jiaqi and Clark, Jackson and Su, Yiming and Zheutlin, Noah and Bhavya, Bhavya and Arora, Rohan and Deng, Yu and Jha, Saurabh and Xu, Tianyin},
+  title     = {{STRATUS}: A Multi-agent System for Autonomous Reliability Engineering of Modern Clouds},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2025}
+}
+
+@inproceedings{operaid2026,
+  author    = {de Castro, Ariel G. and Vandikas, Konstantinos and Ferlin-Reiter, Simone and Chiesa, Marco and Rothenberg, Christian E.},
+  title     = {{OperAID}: Benchmarking {LLM} Agents for Autonomous {Kubernetes} Fault Remediation},
+  booktitle = {IEEE NetSoft Trust 6G-Net Workshop},
+  year      = {2026},
+  note      = {Code: \url{https://github.com/EricssonResearch/operaid}}
+}
+
+@misc{zhang2025microremed,
+  author       = {Zhang, Lingzhe and Zhai, Yunpeng and Jia, Tong and Duan, Chiming and He, Minghua and Pan, Leyi and Liu, Zhaoyang and Ding, Bolin and Li, Ying},
   title        = {{MicroRemed}: Benchmarking {LLMs} in Microservices Remediation},
   howpublished = {arXiv:2511.01166},
-  year         = {2025},
-  note         = {TODO: confirm authors and venue}
+  year         = {2025}
+}
+
+@misc{qi2026r2act,
+  author       = {Qi, Jiaxing and Luan, Zhongzhi and Zhang, Hongyu and Huang, Shaohan and Fung, Carol and Tong, Yongxin and Yang, Hailong and Qian, Depei},
+  title        = {Can {LLMs} Really Recover Microservice Failures? {A} Recovery-Aware Evaluation of Diagnosis-to-Action Reasoning},
+  howpublished = {arXiv:2607.04623},
+  year         = {2026}
 }
 
 @inproceedings{ruan2024toolemu,
@@ -80,19 +109,18 @@
 }
 
 @inproceedings{andriushchenko2025agentharm,
-  author    = {Andriushchenko, Maksym and others},
+  author    = {Andriushchenko, Maksym and Souly, Alexandra and Dziemian, Mateusz and Duenas, Derek and Lin, Maxwell and Wang, Justin and Hendrycks, Dan and Zou, Andy and Kolter, Zico and Fredrikson, Matt and Winsor, Eric and Wynne, Jerome and Gal, Yarin and Davies, Xander},
   title     = {{AgentHarm}: A Benchmark for Measuring Harmfulness of {LLM} Agents},
   booktitle = {Proc. International Conference on Learning Representations (ICLR)},
-  year      = {2025},
-  note      = {TODO: confirm venue and full author list (arXiv:2410.09024)}
+  year      = {2025}
 }
 
-@misc{kim2025quitting,
-  author       = {{TODO: Kim and others}},
-  title        = {Check Yourself Before You Wreck Yourself: Selectively Quitting Improves {LLM} Agent Safety},
-  howpublished = {arXiv:2510.16492},
-  year         = {2025},
-  note         = {TODO: confirm authors and final citation (NeurIPS 2025?)}
+@inproceedings{bonagiri2025quitting,
+  author    = {Bonagiri, Vamshi Krishna and Kumaraguru, Ponnurangam and Nguyen, Khanh and Plaut, Benjamin},
+  title     = {Check Yourself Before You Wreck Yourself: Selectively Quitting Improves {LLM} Agent Safety},
+  booktitle = {NeurIPS 2025 Workshops on Reliable ML and Regulatable ML},
+  year      = {2025},
+  note      = {arXiv:2510.16492}
 }
 
 @inproceedings{greshake2023indirect,
@@ -111,18 +139,48 @@
 }
 
 @misc{debenedetti2025camel,
-  author       = {Debenedetti, Edoardo and others},
+  author       = {Debenedetti, Edoardo and Shumailov, Ilia and Fan, Tianqi and Hayes, Jamie and Carlini, Nicholas and Fabian, Daniel and Kern, Christoph and Shi, Chongyang and Terzis, Andreas and Tram{\`e}r, Florian},
   title        = {Defeating Prompt Injections by Design},
   howpublished = {arXiv:2503.18813},
-  year         = {2025},
-  note         = {TODO: confirm author list}
+  year         = {2025}
 }
 
 @misc{shi2025progent,
-  author       = {Shi, Tianneng and others},
-  title        = {{Progent}: Programmable Privilege Control for {LLM} Agents},
+  author       = {Shi, Tianneng and He, Jingxuan and Wang, Zhun and Li, Hongwei and Wu, Linyu and Guo, Wenbo and Song, Dawn},
+  title        = {{Progent}: Securing {AI} Agents with Privilege Control},
   howpublished = {arXiv:2504.11703},
   year         = {2025}
+}
+
+@inproceedings{wang2026agentspec,
+  author    = {Wang, Haoyu and Poskitt, Christopher M. and Sun, Jun},
+  title     = {{AgentSpec}: Customizable Runtime Enforcement for Safe and Reliable {LLM} Agents},
+  booktitle = {Proc. 48th IEEE/ACM International Conference on Software Engineering (ICSE)},
+  pages     = {2938--2950},
+  year      = {2026},
+  doi       = {10.1145/3744916.3764546}
+}
+
+@inproceedings{xiao2026air,
+  author    = {Xiao, Zibo and Sun, Jun and Chen, Junjie},
+  title     = {{AIR}: Improving Agent Safety through Incident Response},
+  booktitle = {Proc. International Conference on Machine Learning (ICML)},
+  year      = {2026},
+  note      = {arXiv:2602.11749}
+}
+
+@misc{naik2026guardianagentbench,
+  author       = {Naik, Vishal Ishwar and Xu, Chenyu and Dong, Donna and Hassan, Hussein and Pradhan, Abhishek and Mendelevitch, Ofer and Shafat, Tallat and Irshad, Humayun},
+  title        = {{GuardianAgentBench}: Where Agents Fail and How to Guard Them},
+  howpublished = {arXiv:2607.20982},
+  year         = {2026}
+}
+
+@misc{verma2026railguard,
+  author       = {Verma, Sumit and Prasun, Pritam and Kumar, Pritish},
+  title        = {{RAIL Guard}: Closing the Evaluation-to-Remediation Gap in Responsible {AI} for {LLM} Agents},
+  howpublished = {arXiv:2607.16215},
+  year         = {2026}
 }
 
 @inproceedings{rebedea2023nemo,
