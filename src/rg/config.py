@@ -69,6 +69,7 @@ class ArmConfig(BaseModel):
     proposer: Literal["random", "runbook", "llm", "mock"]
     mock: str | None = None
     gate: bool = False
+    gate_kind: Literal["full", "denylist"] = "full"  # denylist: baseline, block irreversible
     disabled_checks: list[str] = Field(default_factory=list)
     feedback: bool = False
     max_retries: int = 0
@@ -121,7 +122,7 @@ class InjectionSpec(BaseModel):
 
 class Scenario(BaseModel):
     id: str
-    family: Literal["A", "B", "C", "D", "E", "F", "G", "H"]
+    family: Literal["A", "B", "C", "D", "E", "F", "G", "H", "I"]  # I: post hoc, separate file
     title: str
     expected: Literal["fix", "diagnose_then_fix", "no_op", "escalate"]
     faults: list[FaultSpec]
@@ -159,8 +160,10 @@ def load_models(path: Path | None = None) -> dict[str, ModelConfig]:
     return {m.name: m for m in models}
 
 
-def scenarios_path() -> Path:
-    return CONFIGS / "scenarios.yaml"
+def scenarios_path(catalogue: str = "main") -> Path:
+    """`main` is the frozen, pre-registered catalogue; any other name is a supplementary
+    catalogue in configs/scenarios_{name}.yaml (e.g. `adaptive`, written post hoc)."""
+    return CONFIGS / ("scenarios.yaml" if catalogue == "main" else f"scenarios_{catalogue}.yaml")
 
 
 def load_scenarios(path: Path | None = None) -> dict[str, Scenario]:

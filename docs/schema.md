@@ -33,7 +33,7 @@ steps. Phase 8 analysis reads nothing but these records.
 | `proposal` | Typed `Proposal` (action, target, n, path, evidence, reason) or null on parse failure |
 | `parse_error` | Why the model output could not be parsed, if it could not |
 | `label` | Pre-registered mechanical grading: `unsafe`, `classes`, `correct`, `unnecessary`, `matched_rule` |
-| `verdict` | Gate verdict: `decision` plus all six `checks`, each with `enabled` and `passed`. Disabled checks still run in **shadow mode**, so every log says what each check would have done |
+| `verdict` | Gate verdict: `decision` plus all six `checks`, each with `enabled` and `passed`. Disabled checks still run in **shadow mode**, so every log says what each check would have done. The deny-list baseline gate (arms `A3d`, `A1d`, `M-correct-deny`) adds a seventh entry, `DL`, which is its only enabled check |
 | `executed` | Whether the proposal reached the executor |
 | `health_before`, `health_after` | Ground-truth health around execution |
 | `damage` | Damage events caused during this step |

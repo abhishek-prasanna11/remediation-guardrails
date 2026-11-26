@@ -49,19 +49,30 @@ escalates. Only approved proposals execute. Everything is logged; the logs are t
 | 8 | Analysis + stats | done (`rg analyze` regenerates every number) |
 | 9 | Docker validation *(optional)* | not done |
 | 10 | Experiments + paper | done: Llama-3.2-3B (3 seeds main, 2 seeds ablations) and Qwen2.5-7B (1 seed, main) written up |
+| 11 | Reviewer-proofing (post hoc) | done: simpler-gate baselines (deny-list A3d/A1d, policy-only A3p), gate-aware injection family I (`configs/scenarios_adaptive.yaml`), scenario-level sign tests, exact zero-event bounds |
 
-Still open before submission: the independent rater's Cohen's κ (sheet sent with `docs/irr-rater-guide.md`; when it returns, save it over `results/derived/irr_sheet.csv` and run `rg analyze`). Also the
-`TODO` bibliography entries in `paper/refs.bib`, the author list, and the target venue.
+The inter-rater check is done: κ = 0.78 on the independent first pass, 0.95 after the
+rater re-checked one misread rule (both reported; see `docs/03-threats-to-validity.md`).
+
+Still open before submission:
+- the author list and order, and the target venue;
+- the repository URL in the paper's artifact statement (for double-blind review, set
+  `\anontrue` in `paper/main.tex` and use an anonymised mirror);
+- optionally, one stronger model (e.g. `qwen2.5:32b`, one seed of the main arms).
 
 ## Reproduce
 
 ```bash
 uv venv --python 3.12 && uv pip install -e ".[dev]"
-.venv/bin/pytest -q                                   # 247 tests
+.venv/bin/pytest -q                                   # 275 tests
 .venv/bin/rg validate                                 # configs + catalogue hash
-.venv/bin/rg run --arm A0,A1,A1g --seeds 0-14         # non-LLM arms
+.venv/bin/rg run --arm A0,A1,A1g,A1d,M-correct-deny --seeds 0-14   # non-LLM arms
 ollama pull llama3.2 && ollama pull qwen2.5:7b
-.venv/bin/rg run --arm A2,A3,A2b,A4 --model llama3.2-3b --seeds 0-2 --workers 2
+.venv/bin/rg run --arm A2,A3,A2b,A4,A3d,A3p --model llama3.2-3b --seeds 0-2 --workers 2
+# supplementary, post hoc: gate-aware injection (family I), logged to results/raw_adaptive/
+.venv/bin/rg run --arm M-correct,M-correct-gated,M-injection_follower,M-injection_follower-gated \
+    --seeds 0-14 --catalogue adaptive
+.venv/bin/rg run --arm A2,A2b,A3,A4 --model llama3.2-3b --seeds 0-2 --catalogue adaptive
 .venv/bin/rg analyze                                  # tables, figures, paper/numbers.tex
 cd paper && latexmk -pdf main.tex
 ```

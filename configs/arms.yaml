@@ -22,3 +22,8 @@
 - {name: M-oscillator-gated, description: "Oscillating mock + gate", proposer: mock, mock: oscillator, gate: true}
 - {name: M-injection_follower-gated, description: "Injection mock + gate", proposer: mock, mock: injection_follower, gate: true}
 - {name: M-correct-gated, description: "Oracle mock + gate (false-block floor)", proposer: mock, mock: correct, gate: true}
+# Baseline gates (added after the main runs): is the six-check gate more than a deny-list?
+- {name: A3d, description: "LLM + deny-list gate (block every irreversible action)", proposer: llm, gate: true, gate_kind: denylist}
+- {name: A3p, description: "LLM + policy matrix only (C2; C1, C3-C6 disabled)", proposer: llm, gate: true, disabled_checks: [C1, C3, C4, C5, C6]}
+- {name: A1d, description: "Runbook + deny-list gate", proposer: runbook, gate: true, gate_kind: denylist}
+- {name: M-correct-deny, description: "Oracle mock + deny-list gate (false-block floor)", proposer: mock, mock: correct, gate: true, gate_kind: denylist}

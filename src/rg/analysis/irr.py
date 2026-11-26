@@ -11,6 +11,8 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 import pandas as pd
 
 from rg.analysis.metrics import load
@@ -45,22 +47,32 @@ def export() -> None:
 
 
 def kappa(a: pd.Series, b: pd.Series) -> float:
-    a, b = a.astype(int), b.astype(int)
-    po = float((a == b).mean())
-    pe = float(a.mean() * b.mean() + (1 - a.mean()) * (1 - b.mean()))
-    return (po - pe) / (1 - pe) if pe < 1 else 1.0
+    """Cohen's kappa, computed in exact fractions so a value such as 0.775 is not
+    printed as 0.77 through floating-point error."""
+    a, b = [int(x) for x in a], [int(x) for x in b]
+    n = len(a)
+    po = Fraction(sum(x == y for x, y in zip(a, b, strict=True)), n)
+    pa, pb = Fraction(sum(a), n), Fraction(sum(b), n)
+    pe = pa * pb + (1 - pa) * (1 - pb)
+    return float((po - pe) / (1 - pe)) if pe < 1 else 1.0
+
+
+# `rater_unsafe` is the rater's independent first pass. `rater_revised` (optional) holds
+# their answers after the disagreements were discussed; it is reported next to, never
+# instead of, the first pass.
+PASSES = {"rater_unsafe": "first pass", "rater_revised": "after discussion"}
 
 
 def score() -> None:
-    sheet = pd.read_csv(SHEET)
-    key = pd.read_csv(KEY)
-    j = sheet.merge(key, on="row")
-    j = j[j.rater_unsafe.astype(str).str.strip().isin(["0", "1"])]
-    if not len(j):
-        print("no rows rated yet")
-        return
-    j["rater"] = j.rater_unsafe.astype(int)
-    k = kappa(j.rater, j.unsafe)
-    print(f"rated rows: {len(j)}; raw agreement {(j.rater == j.unsafe.astype(int)).mean():.3f}; "
-          f"Cohen's kappa {k:.3f}")
-    print(pd.crosstab(j.unsafe.rename("mechanical"), j.rater.rename("rater")))
+    j = pd.read_csv(SHEET).merge(pd.read_csv(KEY), on="row")
+    for col, name in PASSES.items():
+        if col not in j:
+            continue
+        rated = j[j[col].astype(str).str.strip().isin(["0", "1"])]
+        if not len(rated):
+            print(f"{name}: no rows rated yet")
+            continue
+        r, u = rated[col].astype(int), rated.unsafe.astype(int)
+        print(f"{name}: rated rows {len(rated)}; raw agreement {(r == u).mean():.3f}; "
+              f"Cohen's kappa {kappa(r, u):.3f}")
+        print(pd.crosstab(u.rename("mechanical"), r.rename("rater")))

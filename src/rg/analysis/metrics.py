@@ -115,9 +115,17 @@ class Est:
 
 
 def cluster_boot(df: pd.DataFrame, num: str, den: str | None = None,
-                 cluster: str = "scenario_id", n_boot: int = N_BOOT, seed: int = 0) -> Est:
+                 cluster: str = "scenario_id", n_boot: int = N_BOOT, seed: int = 0,
+                 rate: bool = True) -> Est:
     """Ratio-of-sums estimate sum(num)/sum(den) (den=None: count of rows), with a
-    vectorised cluster bootstrap over `cluster`."""
+    vectorised cluster bootstrap over `cluster`.
+
+    For a rate (`rate=True`) with no events, every bootstrap draw is 0 and the percentile
+    interval collapses to [0, 0], which claims a certainty the data do not have. In that
+    case (and symmetrically when every unit is an event) the open end is replaced by the
+    exact two-sided 95% Clopper-Pearson bound, conservatively treating the k clusters,
+    not the episodes, as the independent units: 0 events in k gives [0, 1 - 0.025^(1/k)].
+    """
     if len(df) == 0:
         return Est(float("nan"), float("nan"), float("nan"), 0)
     d = df.assign(_den=1.0 if den is None else df[den].astype(float),
@@ -133,12 +141,31 @@ def cluster_boot(df: pd.DataFrame, num: str, den: str | None = None,
     ok = bd > 0
     vals = bn[ok] / bd[ok]
     lo, hi = np.percentile(vals, [2.5, 97.5])
+    if rate:
+        k = int((dens > 0).sum())
+        if nums.sum() == 0:
+            hi = exact_zero_upper(k)
+        elif nums.sum() == dens.sum():
+            lo = 1.0 - exact_zero_upper(k)
     return Est(float(point), float(lo), float(hi), int(dens.sum()))
+
+
+def exact_zero_upper(k: int, alpha: float = 0.05) -> float:
+    """Two-sided (1 - alpha) Clopper-Pearson upper limit for 0 events in k trials."""
+    return 1.0 - (alpha / 2) ** (1.0 / k) if k else 1.0
 
 
 # ------------------------------------------------------------------ paired tests
 def paired(E: pd.DataFrame, arm_a: str, arm_b: str, model: str, col: str) -> dict:
-    """McNemar exact test and paired absolute difference (b - a) with cluster-bootstrap CI."""
+    """Paired comparison of arm b against arm a on identical (scenario, seed) blocks.
+
+    `p` is an exact two-sided sign test at the SCENARIO level: average the paired
+    difference over a scenario's seeds, then count the scenarios that moved up against
+    those that moved down. Seeds of one scenario are correlated (a deterministic proposer
+    gives the same result for every seed), so testing episodes as if independent
+    (`p_mcnemar`, kept for reference) overstates the evidence. The difference and its CI
+    use the same cluster bootstrap as every other estimate.
+    """
     a = E[(E.arm == arm_a) & (E.model == model)].set_index(["scenario_id", "seed"])[col]
     b = E[(E.arm == arm_b) & (E.model == model)].set_index(["scenario_id", "seed"])[col]
     j = pd.concat([a.rename("a"), b.rename("b")], axis=1, join="inner").reset_index()
@@ -147,8 +174,13 @@ def paired(E: pd.DataFrame, arm_a: str, arm_b: str, model: str, col: str) -> dic
     j["a"], j["b"] = j["a"].astype(bool), j["b"].astype(bool)
     n01 = int((~j.a & j.b).sum())
     n10 = int((j.a & ~j.b).sum())
-    p = binomtest(n01, n01 + n10, 0.5).pvalue if n01 + n10 else 1.0
+    p_mcnemar = binomtest(n01, n01 + n10, 0.5).pvalue if n01 + n10 else 1.0
     j["d"] = j["b"].astype(float) - j["a"].astype(float)
-    diff = cluster_boot(j, "d")
+    per_scen = j.groupby("scenario_id")["d"].mean()
+    s_up, s_down = int((per_scen > 0).sum()), int((per_scen < 0).sum())
+    p = binomtest(s_up, s_up + s_down, 0.5).pvalue if s_up + s_down else 1.0
+    diff = cluster_boot(j, "d", rate=False)
     return {"n": len(j), "rate_a": float(j.a.mean()), "rate_b": float(j.b.mean()),
-            "n01": n01, "n10": n10, "p": float(p), "diff": diff}
+            "n01": n01, "n10": n10, "s_up": s_up, "s_down": s_down,
+            "n_scen": int(j.scenario_id.nunique()),
+            "p": float(p), "p_mcnemar": float(p_mcnemar), "diff": diff}

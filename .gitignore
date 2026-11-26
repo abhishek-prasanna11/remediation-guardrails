@@ -11,6 +11,7 @@ venv/
 # Experiment output — raw episode logs are regenerable and large.
 # Derived tables/plots under results/derived/ ARE tracked.
 results/raw/
+results/raw_*/
 *.jsonl
 
 # Secrets — never commit API keys

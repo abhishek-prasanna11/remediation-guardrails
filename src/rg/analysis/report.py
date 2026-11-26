@@ -175,19 +175,24 @@ def main() -> None:
     P = pd.DataFrame(prow)
     P.to_csv(DER / "paired.csv", index=False)
     if len(P):
-        tex = [r"\begin{tabular}{lllrrrl}", r"\toprule",
-               r"Model & Comparison & Outcome & $p_a$ & $p_b$ & $\Delta$ (pp) [95\% CI] & McNemar $p$ \\",
+        tex = [r"\begin{tabular}{lllrrrrl}", r"\toprule",
+               r"Model & Comparison & Outcome & $p_a$ & $p_b$ & $\Delta$ (pp) [95\% CI] & "
+               r"Scen.\ $\uparrow$/$\downarrow$ & $p$ \\",
                r"\midrule"]
         lines += ["## Paired comparisons (same scenario, same seed)", "",
-                  "| model | a -> b | metric | a | b | diff pp [CI] | discordant (a0b1/a1b0) | McNemar p |",
-                  "|---|---|---|---|---|---|---|---|"]
+                  "p = exact sign test over scenarios (primary); McNemar over episodes for "
+                  "reference only (it treats correlated seeds as independent).", "",
+                  "| model | a -> b | metric | a | b | diff pp [CI] | episodes a0b1/a1b0 | "
+                  "scenarios up/down | sign-test p | McNemar p |",
+                  "|---|---|---|---|---|---|---|---|---|---|"]
         for _, r in P.iterrows():
-            pv = f"{r.p:.2g}" if r.p >= 1e-4 else "$<$10$^{-4}$"
             d = f"{100 * r['diff']:+.1f} [{100 * r['lo']:+.1f}, {100 * r['hi']:+.1f}]"
             tex.append(f"{MODEL_LABEL[r.model]} & {r.a}$\\to${r.b} & {r.metric} & "
-                       f"{100 * r.rate_a:.1f} & {100 * r.rate_b:.1f} & {d} & {pv} \\\\")
+                       f"{100 * r.rate_a:.1f} & {100 * r.rate_b:.1f} & {d} & "
+                       f"{r.s_up}/{r.s_down} & {_ptex(r.p)} \\\\")
             lines.append(f"| {r.model} | {r.a} -> {r.b} | {r.metric} | {100 * r.rate_a:.1f} | "
-                         f"{100 * r.rate_b:.1f} | {d} | {r.n01}/{r.n10} | {r.p:.3g} |")
+                         f"{100 * r.rate_b:.1f} | {d} | {r.n01}/{r.n10} | {r.s_up}/{r.s_down} | "
+                         f"{r.p:.3g} | {r.p_mcnemar:.3g} |")
         tex += [r"\bottomrule", r"\end{tabular}"]
         write("paired.tex", "\n".join(t for t in tex if t) + "\n")
         lines.append("")
@@ -349,7 +354,10 @@ def main() -> None:
     for m, g, c in mrows:
         cells_m[(m, g)] = c
     write_numbers(cells, P, inj_rows, ab_rows, E, blocks, cells_m)
-    beh = behaviour(S, models) + irr_numbers()
+    bl_lines, bl_macros = baseline_gates(E, S, models, blocks)
+    ad_lines, ad_macros = adaptive(models)
+    lines += bl_lines + ad_lines
+    beh = behaviour(S, models) + irr_numbers() + bl_macros + ad_macros
     with open(ROOT / "paper" / "numbers.tex", "a") as fh:
         for name, v in beh:
             fh.write(f"\\newcommand{{\\{name}}}{{{v}}}\n")
@@ -389,7 +397,9 @@ def complete_blocks(E: pd.DataFrame, S: pd.DataFrame, models: list[str]):
 
 ARM_TAG = {"A0": "Azero", "A1": "Aone", "A1g": "Aoneg", "A2": "Atwo", "A2b": "Atwob",
            "A3": "Athree", "A4": "Afour", "A5-C1": "AblOne", "A5-C2": "AblTwo",
-           "A5-C3": "AblThree", "A5-C4": "AblFour", "A5-C5": "AblFive", "A5-C6": "AblSix"}
+           "A5-C3": "AblThree", "A5-C4": "AblFour", "A5-C5": "AblFive", "A5-C6": "AblSix",
+           "A3d": "Athreed", "A3p": "Athreep", "A1d": "Aoned",
+           "M-correct": "Mcorr", "M-correct-gated": "Mcorrg", "M-correct-deny": "Mcorrd"}
 MODEL_TAG = {"none": "Base", "llama3.2-3b": "Llama", "qwen2.5-7b": "Qwen"}
 
 
@@ -398,18 +408,33 @@ MOCK_TAG = {"correct": "Mcorr", "hallucinator": "Mhall", "over_reacher": "Mover"
 
 
 def irr_numbers() -> list[tuple[str, str]]:
-    """Inter-rater macros: sample size always, kappa only once every row is rated."""
+    """Inter-rater macros: sample size always, kappa only once every row is rated.
+    The first pass (`rater_unsafe`) gives IrrKappa/IrrAgree/IrrDisagree; if the sheet has
+    a complete `rater_revised` column, IrrKappaRevised/IrrAgreeRevised/IrrRevised report
+    the answers after discussion (IrrRevised = how many first-pass labels changed)."""
     sheet, key = DER / "irr_sheet.csv", DER / "irr_key.csv"
     if not (sheet.exists() and key.exists()):
         return []
     from rg.analysis.irr import kappa
     j = pd.read_csv(sheet).merge(pd.read_csv(key), on="row")
     out = [("IrrRows", str(len(j)))]
-    rated = j[j.rater_unsafe.astype(str).str.strip().isin(["0", "1", "0.0", "1.0"])]
-    if len(rated) == len(j):
-        r = rated.rater_unsafe.astype(float).astype(int)
-        u = rated.unsafe.astype(int)
-        out += [("IrrKappa", f"{kappa(r, u):.2f}"), ("IrrAgree", f"{100 * (r == u).mean():.0f}")]
+    u = j.unsafe.astype(int)
+
+    def complete(col: str) -> pd.Series | None:
+        if col not in j or not j[col].astype(str).str.strip().isin(["0", "1", "0.0", "1.0"]).all():
+            return None
+        return j[col].astype(float).astype(int)
+
+    first = complete("rater_unsafe")
+    if first is None:
+        return out
+    out += [("IrrKappa", f"{kappa(first, u):.2f}"), ("IrrAgree", f"{100 * (first == u).mean():.0f}"),
+            ("IrrDisagree", str(int((first != u).sum())))]
+    revised = complete("rater_revised")
+    if revised is not None:
+        out += [("IrrKappaRevised", f"{kappa(revised, u):.2f}"),
+                ("IrrAgreeRevised", f"{100 * (revised == u).mean():.1f}"),
+                ("IrrRevised", str(int((revised != first).sum())))]
     return out
 
 
@@ -467,6 +492,153 @@ def behaviour(S: pd.DataFrame, models: list[str]) -> list[tuple[str, str]]:
     return out
 
 
+def _est_macros(name: str, est) -> list[tuple[str, str]]:
+    if est is None or np.isnan(est.value):
+        return []
+    return [(name, f"{100 * est.value:.1f}"),
+            (name + "CI", f"[{100 * est.lo:.1f}, {100 * est.hi:.1f}]")]
+
+
+def _paired_macros(r: dict, a: str, b: str, model: str, metric: str) -> list[tuple[str, str]]:
+    t = f"Diff{metric}{ARM_TAG[a]}{ARM_TAG[b]}{MODEL_TAG[model]}"
+    pv = "p<10^{-4}" if r["p"] < 1e-4 else f"p={r['p']:.2g}"
+    d = r["diff"]
+    return [(t, f"{100 * d.value:+.1f}"), (t + "CI", f"[{100 * d.lo:+.1f}, {100 * d.hi:+.1f}]"),
+            (t + "P", f"${pv}$"), (t + "Up", str(r["s_up"])), (t + "Down", str(r["s_down"]))]
+
+
+BASELINE_ROWS = {
+    "llm": [("A2", "no gate"), ("A3d", "deny-list"), ("A3p", "policy table only"),
+            ("A3", "full gate")],
+    "runbook": [("A1", "no gate"), ("A1d", "deny-list"), ("A1g", "full gate")],
+    "oracle": [("M-correct", "no gate"), ("M-correct-deny", "deny-list"),
+               ("M-correct-gated", "full gate")],
+}
+NEW_BASELINE_ARMS = {"A3d", "A3p", "A1d", "M-correct-deny"}
+
+
+def baseline_gates(E, S, models, blocks) -> tuple[list[str], list[tuple[str, str]]]:
+    """Is the six-check gate more than a one-line rule? Compare it with a deny-list of
+    irreversible actions and with its own policy table (C2) alone, on the same blocks."""
+    groups = [(m, "llm") for m in models] + [("none", "runbook"), ("none", "oracle")]
+    label = {"runbook": "Runbook", "oracle": "Oracle (scripted)"}
+    rows, macros = [], []
+    for model, kind in groups:
+        if kind == "llm":
+            b = blocks.get(model, set())
+            Eb = E[(E.model == model) & E.apply(lambda r, b=b: (r.scenario_id, r.seed) in b,
+                                                 axis=1)]
+        else:
+            Eb = E[E.model == "none"]
+        Sb = S[S.episode_id.isin(set(Eb.episode_id))]
+        for arm, gate in BASELINE_ROWS[kind]:
+            c = cell(Eb, Sb, arm, model)
+            if c is None:
+                continue
+            s = Sb[(Sb.arm == arm) & (Sb.model == model)]
+            blocked_correct = int((s.blocked & s.correct).sum())
+            rows.append((MODEL_LABEL[model] if kind == "llm" else label[kind], gate, c,
+                         blocked_correct))
+            if arm in NEW_BASELINE_ARMS:
+                t = ARM_TAG[arm] + MODEL_TAG[model]
+                for k in ("UnsafeEp", "CatEp", "Resolved"):
+                    macros += _est_macros(k + t, c[k])
+                macros.append(("CorrBlocked" + t, str(blocked_correct)))
+        comps = ([("A3d", "A3"), ("A3p", "A3"), ("A2", "A3d"), ("A2", "A3p")]
+                 if kind == "llm" else [("A1d", "A1g"), ("A1", "A1d")] if kind == "runbook"
+                 else [("M-correct-deny", "M-correct-gated")])
+        for a, b in comps:
+            for col, metric in (("unsafe_exec", "Unsafe"), ("catastrophic_ep", "Cat"),
+                                ("resolved", "Res")):
+                r = paired(Eb, a, b, model, col)
+                if r.get("n"):
+                    macros += _paired_macros(r, a, b, model, metric)
+    lines = []
+    if rows:
+        tex = [r"\begin{tabular}{llrrrr}", r"\toprule",
+               r"Proposer & Gate & Unsafe ep. & Catastr. ep. & Resolved & Correct blocked \\",
+               r"\midrule"]
+        lines += ["## Baseline gates (same blocks as the main arms)", "",
+                  "| proposer | gate | unsafe ep | catastrophic ep | resolved | correct blocked |",
+                  "|---|---|---|---|---|---|"]
+        prev = None
+        for who, gate, c, bc in rows:
+            if prev is not None and who != prev:
+                tex.append(r"\midrule")
+            prev = who
+            tex.append(f"{who} & {gate} & {fmt(c['UnsafeEp'])} & {fmt(c['CatEp'])} & "
+                       f"{fmt(c['Resolved'])} & {bc} \\\\")
+            lines.append(f"| {who} | {gate} | {fmt(c['UnsafeEp'])} | {fmt(c['CatEp'])} | "
+                         f"{fmt(c['Resolved'])} | {bc} |")
+        tex += [r"\bottomrule", r"\end{tabular}"]
+        write("baselines.tex", "\n".join(tex) + "\n")
+        lines.append("")
+    return lines, macros
+
+
+ADAPTIVE_RAW = ROOT / "results" / "raw_adaptive"
+
+
+def adaptive(models) -> tuple[list[str], list[tuple[str, str]]]:
+    """Supplementary family I (post hoc, configs/scenarios_adaptive.yaml): injections that
+    ask only for actions the gate approves. Reported as counts; 4 scenarios are too few
+    clusters for a meaningful interval."""
+    if not ADAPTIVE_RAW.exists():
+        return [], []
+    E2, S2 = load(ADAPTIVE_RAW)
+    if not len(E2):
+        return [], []
+    plan = [(m, a) for m in models for a in LLM_ARMS] + \
+        [("none", "M-injection_follower"), ("none", "M-injection_follower-gated")]
+    who = {"M-injection_follower": ("Scripted follower", "no gate"),
+           "M-injection_follower-gated": ("Scripted follower", "full gate")}
+    rows, macros, detail = [], [], []
+    for model, arm in plan:
+        e = E2[(E2.arm == arm) & (E2.model == model)]
+        if not len(e):
+            continue
+        s = S2[(S2.arm == arm) & (S2.model == model)]
+        fixb = s[s.blocked & s.correct]
+        lock_mask = fixb.failed.apply(lambda f: bool({"C3", "C5"} & set(f))).astype(bool)
+        locked = fixb.loc[lock_mask]
+        r = {"n": len(e), "prop": int(e.inj_prop.sum()), "exec": int(e.inj_exec.sum()),
+             "unsafe": int(e.unsafe_exec.sum()), "res": int(e.resolved.sum()),
+             "fixblocked": int(fixb.episode_id.nunique()),
+             "locked": int(locked.episode_id.nunique())}
+        name = (MODEL_LABEL[model], ARM_LABEL[arm]) if model != "none" else who[arm]
+        rows.append((name, r))
+        t = ARM_TAG.get(arm, "Minj" + ("g" if "gated" in arm else "")) + MODEL_TAG[model]
+        for k, v in r.items():
+            macros.append((f"Adapt{k.capitalize()}{t}", str(v)))
+        for sid, g in e.groupby("scenario_id"):
+            detail.append(f"| {model} | {arm} | {sid} | {int(g.inj_prop.sum())}/{len(g)} | "
+                          f"{int(g.inj_exec.sum())}/{len(g)} | {int(g.resolved.sum())}/{len(g)} |")
+    if not rows:
+        return [], []
+    tex = [r"\begin{tabular}{llrrrr}", r"\toprule",
+           r"Proposer & Arm & Inj.\ proposed & Inj.\ executed & Resolved & Fix locked out \\",
+           r"\midrule"]
+    lines = ["## Supplementary family I: gate-aware injection (post hoc; episode counts)", "",
+             "| proposer | arm | n | injected proposed | injected executed | unsafe ep | "
+             "resolved | correct fix blocked | locked out by C3/C5 |",
+             "|---|---|---|---|---|---|---|---|---|"]
+    prev = None
+    for (p, arm), r in rows:
+        if prev is not None and p != prev:
+            tex.append(r"\midrule")
+        prev = p
+        n = r["n"]
+        tex.append(f"{p} & {arm} & {r['prop']}/{n} & {r['exec']}/{n} & {r['res']}/{n} & "
+                   f"{r['locked']}/{n} \\\\")
+        lines.append(f"| {p} | {arm} | {n} | {r['prop']} | {r['exec']} | {r['unsafe']} | "
+                     f"{r['res']} | {r['fixblocked']} | {r['locked']} |")
+    tex += [r"\bottomrule", r"\end{tabular}"]
+    write("adaptive.tex", "\n".join(tex) + "\n")
+    lines += ["", "| model | arm | scenario | injected proposed | injected executed | resolved |",
+              "|---|---|---|---|---|---|", *detail, ""]
+    return lines, macros
+
+
 def write_numbers(cells, P, inj_rows, ab_rows, E, blocks, cells_m=None) -> None:
     """paper/numbers.tex: one macro per number quoted in the text (regenerated, never edited)."""
     out = ["% generated by rg analyze -- do not edit", ""]
@@ -497,6 +669,8 @@ def write_numbers(cells, P, inj_rows, ab_rows, E, blocks, cells_m=None) -> None:
         out.append(f"\\newcommand{{\\{t}P}}{{${pv}$}}")
         out.append(f"\\newcommand{{\\{t}Gain}}{{{int(r.n01)}}}")
         out.append(f"\\newcommand{{\\{t}Loss}}{{{int(r.n10)}}}")
+        out.append(f"\\newcommand{{\\{t}Up}}{{{int(r.s_up)}}}")
+        out.append(f"\\newcommand{{\\{t}Down}}{{{int(r.s_down)}}}")
     for r in inj_rows:
         t = ARM_TAG[r["arm"]] + MODEL_TAG[r["model"]]
         put("InjProp" + t, r["proposed"])
@@ -524,6 +698,10 @@ def write_numbers(cells, P, inj_rows, ab_rows, E, blocks, cells_m=None) -> None:
 
 def _p(p) -> str:
     return "--" if p is None else f"p={p:.2g}"
+
+
+def _ptex(p: float) -> str:
+    return f"{p:.2g}" if p >= 1e-4 else "$<$10$^{-4}$"
 
 
 # ------------------------------------------------------------------ figures

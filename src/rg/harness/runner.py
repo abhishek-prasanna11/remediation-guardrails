@@ -12,8 +12,16 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from rg.config import ROOT, ArmConfig, catalogue_sha, load_arms, load_models, load_scenarios
-from rg.gate.gate import Gate
+from rg.config import (
+    ROOT,
+    ArmConfig,
+    catalogue_sha,
+    load_arms,
+    load_models,
+    load_scenarios,
+    scenarios_path,
+)
+from rg.gate.gate import make_gate
 from rg.harness.episode import run_episode
 from rg.propose.base import MOCKS, Proposer, RandomProposer, RunbookProposer
 
@@ -32,8 +40,14 @@ def make_proposer(arm: ArmConfig, model_name: str) -> Proposer:
     return LLMProposer(load_models()[model_name], prompt_variant=arm.prompt)
 
 
-def out_path(arm: str, model: str) -> Path:
-    return RAW / f"{arm}__{model}.jsonl"
+def raw_dir(catalogue: str = "main") -> Path:
+    """Supplementary catalogues log to their own directory, so the main analysis never
+    mixes them with the pre-registered scenarios."""
+    return RAW if catalogue == "main" else ROOT / "results" / f"raw_{catalogue}"
+
+
+def out_path(arm: str, model: str, catalogue: str = "main") -> Path:
+    return raw_dir(catalogue) / f"{arm}__{model}.jsonl"
 
 
 def done_ids(path: Path) -> set[str]:
@@ -58,14 +72,14 @@ def parse_seeds(spec: str) -> list[int]:
 
 
 def run_cell(arm_name: str, model: str, seeds: list[int], scenarios: list[str] | None = None,
-             workers: int = 1, verbose: bool = True) -> Path:
+             workers: int = 1, verbose: bool = True, catalogue: str = "main") -> Path:
     arm = load_arms()[arm_name]
     if arm.proposer != "llm":
         model = "none"
-    scen = load_scenarios()
+    scen = load_scenarios(scenarios_path(catalogue))
     ids = scenarios or sorted(scen)
-    sha = catalogue_sha()
-    path = out_path(arm_name, model)
+    sha = catalogue_sha(scenarios_path(catalogue))
+    path = out_path(arm_name, model, catalogue)
     path.parent.mkdir(parents=True, exist_ok=True)
     done = done_ids(path)
     todo = [(sid, s) for sid in ids for s in seeds
@@ -74,7 +88,7 @@ def run_cell(arm_name: str, model: str, seeds: list[int], scenarios: list[str] |
 
     def one(job: tuple[str, int]) -> str:
         sid, seed = job
-        gate = Gate(disabled=arm.disabled_checks) if arm.gate else None
+        gate = make_gate(arm.gate_kind, arm.disabled_checks) if arm.gate else None
         rec = run_episode(scen[sid], seed, arm, make_proposer(arm, model), gate,
                           model=model, cat_sha=sha)
         line = rec.model_dump_json()

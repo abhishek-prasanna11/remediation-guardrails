@@ -211,3 +211,38 @@ def test_retry_gets_feedback():
     ctx = ep.observer.build_context(1, 6, [], ["rejected(C1): target x"])
     assert "GATE FEEDBACK" in ctx.text and arm.feedback
     tick(ep)
+
+
+# Deny-list baseline ------------------------------------------------------------------
+def deny_verdict(sid, p):
+    from rg.gate.gate import DenyListGate
+
+    ep, ctx = setup(sid)
+    return DenyListGate().check(p, ctx, ep.cluster, GateState())
+
+
+def test_denylist_blocks_every_irreversible_action():
+    for a, t in (("drain_node", "node-b"), ("failover_database", "orders-db"),
+                 ("flush_queue", "order-queue"), ("delete_files", "/var/log/payments/*")):
+        v = deny_verdict("A1-memleak-checkout", P(a, t))
+        assert v.decision == "block" and v.failed == ["DL"], (a, v.reason)
+
+
+def test_denylist_blocks_correct_irreversible_fix():
+    v = deny_verdict("A2-logfill-frontend",
+                     P("truncate_logs", "frontend", path="/var/log/frontend/app.log"))
+    assert v.decision == "block"
+
+
+def test_denylist_approves_reversible_wrong_target():
+    # the full gate rejects this (C1); the deny-list has no notion of targets
+    v = deny_verdict("A1-memleak-checkout", P("restart_service", "payments"))
+    assert v.decision == "approve"
+    assert "C1" in v.shadow_failed  # the full gate's opinion is still logged
+
+
+def test_make_gate_kinds():
+    from rg.gate.gate import DenyListGate, make_gate
+
+    assert isinstance(make_gate("denylist"), DenyListGate)
+    assert make_gate("full", ["C2"]).disabled == {"C2"}

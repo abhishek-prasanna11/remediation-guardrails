@@ -24,7 +24,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from rg.actions.catalogue import CATALOGUE, INVERSES, Proposal
+from rg.actions.catalogue import CATALOGUE, INVERSES, Proposal, Reversibility
 from rg.config import GateConfig, load_gate
 from rg.observe.observer import Context
 from rg.schema import CheckResult, Verdict
@@ -210,3 +210,31 @@ class Gate:
             return ("symptom no longer present at execution time: "
                     f"{sorted(candidates)} all within normal ranges")
         return None
+
+
+class DenyListGate(Gate):
+    """Baseline: the one-line rule "never execute an irreversible action".
+
+    It reads no state. Its only enabled check is DL; C1-C6 still run in shadow mode so the
+    log records what the full gate would have done with the same proposal.
+    """
+
+    def __init__(self, cfg: GateConfig | None = None):
+        super().__init__(cfg, disabled=list(CHECKS))
+
+    def check(self, p: Proposal, ctx: Context, c: Cluster, st: GateState) -> Verdict:
+        v = super().check(p, ctx, c, st)
+        irreversible = CATALOGUE[p.action].reversibility is Reversibility.IRREVERSIBLE
+        dl = CheckResult(check="DL", passed=not irreversible, enabled=True,
+                         reason=f"action '{p.action}' is irreversible; deny-listed"
+                         if irreversible else "")
+        checks = [*v.checks, dl]
+        if irreversible:
+            return Verdict(decision="block", checks=checks, reason=f"rejected(DL): {dl.reason}")
+        return Verdict(decision="approve", checks=checks)
+
+
+def make_gate(kind: str, disabled: list[str] | None = None) -> Gate:
+    if kind == "denylist":
+        return DenyListGate()
+    return Gate(disabled=disabled)
